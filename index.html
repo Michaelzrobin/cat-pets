@@ -137,7 +137,16 @@ figcaption{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
 .looks{position:fixed;z-index:30;width:min(348px,calc(100vw - 24px));background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px -16px rgba(10,14,25,.45);padding:14px 14px 12px}
 .looks .eyebrow{margin:0 0 2px}
 .looks p{margin:0 0 10px;font-size:13.5px;color:var(--muted)}
-.looks-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.looks-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.looks-grid.coats{grid-template-columns:repeat(5,minmax(0,1fr))}
+.looks-sec + .looks-sec{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.looks-sec .lab{margin-bottom:4px}
+.looks-inline{margin:18px auto 0;max-width:620px;padding:16px}
+.looks-inline .looks-grid{grid-template-columns:repeat(auto-fill,minmax(72px,1fr))}
+.looks-inline .looks-grid.coats{grid-template-columns:repeat(auto-fill,minmax(58px,1fr))}
+.looks-inline-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.looks-inline-head h3{margin:0;font-size:16px}
+.looks-inline-head span{color:var(--muted);font-size:13.5px}
 .look{display:grid;gap:2px;justify-items:center;border:1.5px solid transparent;background:none;border-radius:10px;padding:4px 2px 5px;font-size:11.5px;line-height:1.2;color:var(--muted);text-align:center}
 .look img{width:100%;height:auto;display:block;border-radius:6px}
 .look:hover{background:var(--wash);color:var(--ink)}
@@ -360,7 +369,7 @@ const HAPPY = { purr:'Purring', slowblink:'Slow blinks', headbump:'Head bumps', 
 const STOP = { tail:'Tail swishing or thumping', ears:'Ears turning sideways or flat', ripple:'Skin rippling along the back', look:'Turning to stare at your hand', still:'Going suddenly still', pupils:'Big, dark pupils', growl:'Growling or hissing', grab:'Grabbing with paws', leave:'Walking away' };
 const WARN = { pickup:"Don't pick {them} up", wake:'Never wake {them} up to pet {them}', eating:"No petting while {theyre} eating", door:'Door dasher. Keep outside doors closed.', kids:"Don't let kids chase {them}", overstim:'Gets overstimulated fast. Keep sessions short.', lap:'Not a lap cat. Let {them} choose where to sit.' };
 
-function blank(){ return { v:1, name:'', pronoun:'she', about:'', photo:null, zones:{}, hello:'', helloCustom:'', pressure:'', session:'', happy:[], happyCustom:[], stop:[], stopCustom:[], warn:[], warnCustom:[], notes:'', contactName:'', contactPhone:'', paper:'letter', breed:'classic', isExample:false }; }
+function blank(){ return { v:1, name:'', pronoun:'she', about:'', photo:null, zones:{}, hello:'', helloCustom:'', pressure:'', session:'', happy:[], happyCustom:[], stop:[], stopCustom:[], warn:[], warnCustom:[], notes:'', contactName:'', contactPhone:'', paper:'letter', breed:'classic', coat:'solid', isExample:false }; }
 function example(){
   const z = (level, ...tips) => ({ level, tips: tips.map(k => ({k})) });
   return Object.assign(blank(), {
@@ -379,10 +388,9 @@ function example(){
 /* ---------------- state ---------------- */
 const KEY = 'cat-petting-guide:v1';
 let S = null, view = 'home', zi = 0, confirmNew = false, hoverZone = null, moreTips = false;
-function load(){ try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && o.v === 1){ const st = Object.assign(blank(), o); if (st.zones.forehead && !st.zones.tophead){ st.zones.tophead = st.zones.forehead; } delete st.zones.forehead; for (const k in st.zones){ const zl = st.zones[k]; if (zl && OLD_LEVELS[zl.level]) zl.level = OLD_LEVELS[zl.level]; } return st; } } } catch(e){} return null; }
+function load(){ try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && o.v === 1){ const st = Object.assign(blank(), o); if (st.breed === 'tabby'){ st.breed = 'classic'; st.coat = 'tabby'; } if (!BREED[st.breed]) st.breed = 'classic'; if (!COAT[st.coat]) st.coat = BREED[st.breed].coat || 'solid'; if (st.zones.forehead && !st.zones.tophead){ st.zones.tophead = st.zones.forehead; } delete st.zones.forehead; for (const k in st.zones){ const zl = st.zones[k]; if (zl && OLD_LEVELS[zl.level]) zl.level = OLD_LEVELS[zl.level]; } return st; } } } catch(e){} return null; }
 let saveT = 0;
 function save(){ clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){ try { localStorage.setItem(KEY, JSON.stringify(Object.assign({}, S, {photo:null}))); } catch(e2){} } }, 250); }
-S = load();
 const P = () => PRON[(S && S.pronoun) || 'she'];
 function fmt(str, st){ st = st || S; const p = PRON[st.pronoun] || PRON.she; return String(str).replace(/\{(\w+)\}/g, (m, k) => k === 'name' ? (st.name || 'your cat') : (p[k] != null ? p[k] : m)); }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -393,18 +401,19 @@ function tipText(t, st){ return t.k ? fmt(TIPS[t.k] || '', st) : t.t; }
 /* ---------------- cat geometry (design units) ---------------- */
 const BREEDS = [
   { id:'classic',   name:'Classic' },
-  { id:'tabby',     name:'Tabby',         marks:'tabby' },
-  { id:'siamese',   name:'Siamese',       ears:'big',    head:[64,58,70,42], tail:[11,7,0],     legs:0.9,  marks:'points' },
-  { id:'mainecoon', name:'Maine Coon',    ears:'tufted', ruff:7,             tail:[18,13,0.3],  legs:1.06, marks:'coon' },
+  { id:'siamese',   name:'Siamese',       ears:'big',    head:[64,58,70,42], tail:[11,7,0],     legs:0.9,  coat:'points' },
+  { id:'mainecoon', name:'Maine Coon',    ears:'tufted', ruff:7,             tail:[18,13,0.3],  legs:1.06, marks:'coon', coat:'tabby' },
   { id:'persian',   name:'Persian',       ears:'small',  head:[72,62,80,46], ruff:6, tail:[18,15,0.32], marks:'fluff', noseDy:-4 },
   { id:'fold',      name:'Scottish Fold', ears:'fold',   head:[70,60,80,44], marks:'fold' },
   { id:'sphynx',    name:'Sphynx',        ears:'huge',   head:[64,58,72,42], tail:[10,5,0],     legs:0.85, marks:'wrinkles', whisk:0.45 },
-  { id:'bengal',    name:'Bengal',        marks:'spots' },
+  { id:'bengal',    name:'Bengal',        ears:'rounded', tail:[15,11,0],    legs:1.04, coat:'spots' },
 ];
+const COATS = [ { id:'solid', name:'Solid' }, { id:'tabby', name:'Tabby' }, { id:'spots', name:'Spotted' }, { id:'points', name:'Color points' }, { id:'tuxedo', name:'Tuxedo' } ];
+const COAT = Object.fromEntries(COATS.map(c => [c.id, c]));
 const BREED = Object.fromEntries(BREEDS.map(b => [b.id, b]));
 const EARS = {
   classic:[[64,126],[68,46],[118,96]], tufted:[[62,126],[64,40],[118,96]], big:[[60,128],[56,30],[122,96]],
-  huge:[[54,128],[44,18],[126,92]], small:[[72,116],[78,72],[110,98]],
+  huge:[[54,128],[44,18],[126,92]], small:[[72,116],[78,72],[110,98]], rounded:[[66,122],[72,56],[116,98]],
 };
 const catCache = new Map();
 function getCat(id){ id = BREED[id] ? id : 'classic'; if (!catCache.has(id)) catCache.set(id, buildCat(BREED[id])); return catCache.get(id); }
@@ -508,26 +517,20 @@ function buildCat(B){
     [[199,386],[478,385]].forEach(([x,y]) => { [-7,1].forEach(dx => { ctx.beginPath(); ctx.moveTo(x+dx-3, y+4); ctx.lineTo(x+dx-2, y+10); ctx.stroke(); }); });
     ctx.restore();
   }
-  /* breed markings, drawn over the heat colors (multiply) and clipped to the cat */
-  function drawMarkings(ctx, ink){
-    const m = B.marks; if (!m || m === 'none') return;
+  /* coat pattern (multiplied over the heat colors) plus breed details, clipped to the cat */
+  function drawMarkings(ctx, ink, coat){
     const brown = '#3a2a20';
-    ctx.save(); ctx.clip(silhouette); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const tailAt = t => { const p = bezPt(TAIL[0], TAIL[1], TAIL[2], TAIL[3], t), q = bezPt(TAIL[0], TAIL[1], TAIL[2], TAIL[3], Math.min(1, t + 0.01)); const a = Math.atan2(q[1]-p[1], q[0]-p[0]); return [p, a, tl[0] + (tl[1]-tl[0])*t]; };
-    const tailRings = (alpha, ts) => { ctx.globalAlpha = alpha; ctx.strokeStyle = brown; ctx.lineWidth = 5; ts.forEach(t => { const [p, a, r] = tailAt(t), nx = -Math.sin(a), ny = Math.cos(a); ctx.beginPath(); ctx.moveTo(p[0] - nx*r*1.4, p[1] - ny*r*1.4); ctx.lineTo(p[0] + nx*r*1.4, p[1] + ny*r*1.4); ctx.stroke(); }); };
-    const ruffLines = alpha => { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = alpha; ctx.strokeStyle = ink; ctx.lineWidth = 1.3;
-      for (let i = 0; i < 9; i++){ const a = Math.PI*(0.18 + i*0.08), x = 130 + Math.cos(a)*(head[2] - 6), y = 176 + Math.sin(a)*(head[3] + 2); ctx.beginPath(); ctx.moveTo(x - 4, y - 7); ctx.lineTo(x, y); ctx.lineTo(x + 4, y - 7); ctx.stroke(); }
-      [[180,238],[172,256],[186,272]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 5, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 5, y - 6); ctx.stroke(); }); };
-    ctx.globalCompositeOperation = 'multiply';
-    if (m === 'tabby'){
+    ctx.save(); ctx.clip(silhouette); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalCompositeOperation = 'multiply';
+    if (coat === 'tabby'){
       ctx.globalAlpha = 0.34; ctx.strokeStyle = brown; ctx.lineWidth = 6;
       [246,282,318,354,390,426].forEach((x, i) => { ctx.beginPath(); ctx.moveTo(x, 168); ctx.quadraticCurveTo(x + 14, 204, x - 4, i % 2 ? 230 : 244); ctx.stroke(); });
       ctx.beginPath(); ctx.ellipse(470,246,30,36,-0.35,2.3,4.2); ctx.stroke(); ctx.beginPath(); ctx.ellipse(470,246,16,20,-0.35,2.3,4.2); ctx.stroke();
       ctx.lineWidth = 5; [326,346,364].forEach(y => { ctx.beginPath(); ctx.moveTo(176,y); ctx.lineTo(290,y+2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(404,y+4); ctx.lineTo(540,y+6); ctx.stroke(); });
-      tailRings(0.34, [0.22,0.38,0.53,0.67,0.8,0.92]);
+      [0.22,0.38,0.53,0.67,0.8,0.92].forEach(t => { const [p, a, r] = tailAt(t), nx = -Math.sin(a), ny = Math.cos(a); ctx.beginPath(); ctx.moveTo(p[0] - nx*r*1.6, p[1] - ny*r*1.6); ctx.lineTo(p[0] + nx*r*1.6, p[1] + ny*r*1.6); ctx.stroke(); });
       ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(112,124); ctx.lineTo(118,104); ctx.lineTo(130,118); ctx.lineTo(142,104); ctx.lineTo(148,124); ctx.stroke();
-      [[-1],[1]].forEach(([s]) => { [0,8].forEach(d => { ctx.beginPath(); ctx.moveTo(130 + s*58, 160 + d); ctx.lineTo(130 + s*76, 156 + d*1.3); ctx.stroke(); }); });
-    } else if (m === 'spots'){
+      [-1,1].forEach(sg => { [0,8].forEach(d => { ctx.beginPath(); ctx.moveTo(130 + sg*58, 160 + d); ctx.lineTo(130 + sg*76, 156 + d*1.3); ctx.stroke(); }); });
+    } else if (coat === 'spots'){
       let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
       ctx.globalAlpha = 0.4; ctx.strokeStyle = brown; ctx.fillStyle = brown; ctx.lineWidth = 3; const placed = [];
       for (let i = 0; i < 900 && placed.length < 46; i++){
@@ -538,31 +541,33 @@ function buildCat(B){
         for (let k = 0; k < 3; k++){ ctx.beginPath(); ctx.arc(x, y, r, a + k*2.1, a + k*2.1 + 1.45); ctx.stroke(); }
       }
       for (let i = 0; i < 9; i++){ const x = 108 + rnd()*44, y = 102 + rnd()*26; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI*2); ctx.fill(); }
-    } else if (m === 'points'){
-      const pc = 'rgba(75,50,39,'; ctx.globalAlpha = 1;
+    } else if (coat === 'points'){
+      const pc = 'rgba(75,50,39,';
       ctx.save(); ctx.translate(130, 168); ctx.scale(1.3, 1); const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 52); g.addColorStop(0, pc + '0.34)'); g.addColorStop(0.55, pc + '0.22)'); g.addColorStop(1, pc + '0)'); ctx.fillStyle = g; ctx.fillRect(-60, -60, 120, 120); ctx.restore();
       ctx.fillStyle = pc + '0.46)'; ctx.fill(earL); ctx.fill(earR);
       const lg = ctx.createLinearGradient(0, 300, 0, 396); lg.addColorStop(0, pc + '0)'); lg.addColorStop(1, pc + '0.5)'); ctx.fillStyle = lg;
       [farHind, farHindPaw, farFront, farFrontPaw, nearHind, nearHindPaw, nearFront, nearFrontPaw].forEach(p => ctx.fill(p));
       const tg = ctx.createLinearGradient(520, 210, 560, 50); tg.addColorStop(0, pc + '0)'); tg.addColorStop(1, pc + '0.55)'); ctx.fillStyle = tg; ctx.fill(tail);
-    } else if (m === 'coon'){
-      tailRings(0.22, [0.3,0.5,0.7,0.88]);
-      ctx.globalCompositeOperation = 'source-over'; ctx.restore(); ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
-      [earPtsL, mirror(earPtsL)].forEach(pts => { const t = pts[1]; [-4,0,4].forEach(dx => { ctx.beginPath(); ctx.moveTo(t[0] + dx*0.25, t[1] + 12); ctx.lineTo(t[0] + dx, t[1] - 3); ctx.stroke(); }); });
-      ctx.clip(silhouette); ruffLines(0.55);
-    } else if (m === 'fluff'){
-      ruffLines(0.5);
-      ctx.lineWidth = 1.2; ctx.globalAlpha = 0.45; [[260,298],[300,302],[350,300],[400,296]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 5, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 5, y - 6); ctx.stroke(); });
-    } else if (m === 'fold'){
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.7; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(74,108); ctx.quadraticCurveTo(90,92,108,100); ctx.moveTo(186,108); ctx.quadraticCurveTo(170,92,152,100); ctx.stroke();
-    } else if (m === 'wrinkles'){
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.5; ctx.strokeStyle = ink; ctx.lineWidth = 1.3;
+    } else if (coat === 'tuxedo'){
+      const dark = new Path2D(); dark.rect(0, -20, 660, 460);
+      [[130,192,30,18],[188,262,30,40],[199,384,26,15],[251,381,23,13],[478,383,25,15],[428,381,23,13]].forEach(([x,y,rx,ry]) => { dark.moveTo(x + rx, y); dark.ellipse(x, y, rx, ry, 0, 0, Math.PI*2, true); dark.closePath(); });
+      ctx.globalAlpha = 0.42; ctx.fillStyle = '#25252b'; ctx.fill(dark, 'nonzero');
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.strokeStyle = ink;
+    const ruffLines = alpha => { ctx.globalAlpha = alpha; ctx.lineWidth = 1.3;
+      for (let i = 0; i < 9; i++){ const a = Math.PI*(0.18 + i*0.08), x = 130 + Math.cos(a)*(head[2] - 6), y = 176 + Math.sin(a)*(head[3] + 2); ctx.beginPath(); ctx.moveTo(x - 4, y - 7); ctx.lineTo(x, y); ctx.lineTo(x + 4, y - 7); ctx.stroke(); }
+      [[180,238],[172,256],[186,272]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 5, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 5, y - 6); ctx.stroke(); }); };
+    const m = B.marks;
+    if (m === 'coon') ruffLines(0.55);
+    else if (m === 'fluff'){ ruffLines(0.5); ctx.lineWidth = 1.2; ctx.globalAlpha = 0.45; [[260,298],[300,302],[350,300],[400,296]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 5, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 5, y - 6); ctx.stroke(); }); }
+    else if (m === 'fold'){ ctx.globalAlpha = 0.7; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(74,108); ctx.quadraticCurveTo(90,92,108,100); ctx.moveTo(186,108); ctx.quadraticCurveTo(170,92,152,100); ctx.stroke(); }
+    else if (m === 'wrinkles'){ ctx.globalAlpha = 0.5; ctx.lineWidth = 1.3;
       [[110,118,150],[114,126,146],[120,110,140]].forEach(([x1,y,x2]) => { ctx.beginPath(); ctx.moveTo(x1, y); ctx.quadraticCurveTo(130, y - 6, x2, y); ctx.stroke(); });
       [[196,206,212,224],[204,214,222,238],[236,230,248,250],[248,236,262,258]].forEach(([a,b,c,d]) => { ctx.beginPath(); ctx.moveTo(a, b); ctx.quadraticCurveTo(c + 6, (b + d)/2, c, d); ctx.stroke(); });
-      [[206,300],[212,310]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.quadraticCurveTo(x, y + 4, x + 10, y); ctx.stroke(); });
-    }
+      [[206,300],[212,310]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.quadraticCurveTo(x, y + 4, x + 10, y); ctx.stroke(); }); }
     ctx.restore();
+    if (m === 'coon'){ ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+      [earPtsL, mirror(earPtsL)].forEach(pts => { const t = pts[1]; [-4,0,4].forEach(dx => { ctx.beginPath(); ctx.moveTo(t[0] + dx*0.25, t[1] + 12); ctx.lineTo(t[0] + dx, t[1] - 3); ctx.stroke(); }); }); ctx.restore(); }
   }
   return { id:B.id, parts, far:[farHind, farHindPaw, farFront, farFrontPaw], silhouette, zones:Z, byId, drawFace, drawMarkings };
 }
@@ -649,7 +654,7 @@ function renderCatMap(ctx, px, py, pw, o){
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(acc, px, py); ctx.setTransform(...T);
   }
-  ctx.restore(); G.drawMarkings(ctx, th.face);
+  ctx.restore(); G.drawMarkings(ctx, th.face, o.coat || 'solid');
   ctx.save(); ctx.clip(G.silhouette); ctx.beginPath(); ctx.rect(b.x0, 308, b.w, 200); ctx.clip(); ctx.fillStyle = 'rgba(16,20,36,.13)'; G.far.forEach(p => ctx.fill(p)); ctx.restore();
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(seamCanvas(W, H, s, th.seam, G), px, py); ctx.setTransform(...T);
   G.drawFace(ctx, th.face);
@@ -791,7 +796,7 @@ function layoutSheet(ctx, st, pp, dpi, k, dry, photo){
   const bandTop = y, mapY = bandTop + (topH ? topH + lead : 0);
   const bandH = Math.max(colH('L'), colH('R'), (mapY - bandTop) + mapH + (botH ? lead + botH : 0));
   const botY = mapY + mapH + lead;
-  if (!dry) renderCatMap(ctx, mapX, mapY, mapW, { levels:Object.fromEntries(set.map(id => [id, st.zones[id].level])), theme:SHEET_THEME, heatRes:1.1, cat:G });
+  if (!dry) renderCatMap(ctx, mapX, mapY, mapW, { levels:Object.fromEntries(set.map(id => [id, st.zones[id].level])), theme:SHEET_THEME, heatRes:1.1, cat:G, coat:st.coat });
   const toPx = (x, yy) => [mapX + (x - MAPB.x0)*mapW/MAPB.w, mapY + (yy - MAPB.y0)*mapW/MAPB.w];
   const dotAt = t => { ctx.fillStyle = '#fff'; ctx.strokeStyle = C.ink; ctx.lineWidth = pt(0.9); ctx.beginPath(); ctx.arc(t[0], t[1], I(0.03), 0, Math.PI*2); ctx.fill(); ctx.stroke(); };
   const leader = segs => { ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -1071,15 +1076,15 @@ function renderPrint(){
   $('#v-print').innerHTML = `
     <div class="step-head"><p class="eyebrow">Step 5 of 5</p><h1>${esc(n === 'your cat' ? 'Your' : possessive(n))} guide is ready to print</h1><p class="lede">Check it over, then save it. It fits on one page.</p></div>
     <div class="print-grid">
-      <div class="preview"><div class="paper"><img id="sheetimg" alt="Printable petting guide preview" width="935" height="1210"></div></div>
+      <div class="preview"><div class="paper"><img id="sheetimg" alt="Printable petting guide preview" width="935" height="1210"></div><div class="card looks-inline" id="looks-inline"></div></div>
       <div class="actions">
         ${nLeft ? `<p class="fallback">${nLeft} part${nLeft === 1 ? '' : 's'} of the body ${nLeft === 1 ? 'is' : 'are'} still unrated and show${nLeft === 1 ? 's' : ''} as grey stripes. <button class="linkbtn" data-act="go" data-v="zones">Rate ${nLeft === 1 ? 'it' : 'them'}</button></p>` : ''}
-        <div><span class="lab">Paper size</span>${seg('paper', { letter:'US Letter', a4:'A4' }, s.paper)}<div style="margin-top:10px"><button class="linkbtn look-link" data-act="looks" aria-haspopup="dialog">Change the cat's look, just for fun</button></div></div>
+        <div><span class="lab">Paper size</span>${seg('paper', { letter:'US Letter', a4:'A4' }, s.paper)}</div>
         <div id="saveactions"></div>
         <ul class="pts"><li>Open the PDF and print at 100% or "Actual size".</li><li>Stick it on the fridge or next to the food bowl for sitters and guests.</li><li>Your answers stay in this browser, so you can come back and edit.</li></ul>
       </div>
     </div>`;
-  renderPrintActions(); updatePreview();
+  renderPrintActions(); renderLooksInline(); updatePreview();
 }
 function renderPrintActions(){
   const el = $('#saveactions'); if (!el) return;
@@ -1146,7 +1151,7 @@ function drawMapNow(){
   const theme = { outline:cssVar('--ink'), base:cssVar('--cat-base'), hatch:cssVar('--cat-hatch'), seam:'rgba(18,22,34,.35)', face:cssVar('--cat-face'), dim:cssVar('--dim'), ring:cssVar('--ink') };
   const levels = {}; for (const k in S.zones) if (S.zones[k].level) levels[k] = S.zones[k].level;
   const active = CAT.byId[ZONE_ORDER[zi]].i, hov = hoverZone;
-  renderCatMap(ctx, 0, 0, cv.width, { levels, theme, active, hover:hov, dpr, heatRes:0.7 });
+  renderCatMap(ctx, 0, 0, cv.width, { levels, theme, active, hover:hov, dpr, heatRes:0.7, coat:S.coat });
   mapGeom = { w, h };
   const zid = ZONE_ORDER[zi], l = levels[zid] && LV[levels[zid]];
   cv.setAttribute('aria-label', `Body map of ${catName()}. Selected: ${CAT.byId[zid].name}${l ? ', ' + l.label : ', not set'}.`);
@@ -1155,19 +1160,29 @@ function mapPoint(e){ const cv = $('#map'), r = cv.getBoundingClientRect(); retu
 
 /* ---------------- cat looks (bonus) ---------------- */
 let looksAnchor = null; const thumbCache = new Map();
-function lookThumb(id){
+function lookThumb(breed, coat){
   const base = '#E6DED3', theme = { outline:cssVar('--ink'), base, hatch:base, seam:'rgba(0,0,0,0)', face:'#1B2030', dim:cssVar('--dim') };
-  const key = id + theme.outline;
+  const key = breed + '|' + coat + '|' + theme.outline;
   if (thumbCache.has(key)) return thumbCache.get(key);
   const dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.round(84*dpr), c = mk(w, Math.round(w*MAPB.h/MAPB.w));
-  renderCatMap(c.getContext('2d'), 0, 0, w, { levels:{}, theme, cat:getCat(id), heatRes:0.3, dpr });
-  const url = c.toDataURL('image/png'); if (thumbCache.size > 40) thumbCache.clear(); thumbCache.set(key, url); return url;
+  renderCatMap(c.getContext('2d'), 0, 0, w, { levels:{}, theme, cat:getCat(breed), coat, heatRes:0.3, dpr });
+  const url = c.toDataURL('image/png'); if (thumbCache.size > 80) thumbCache.clear(); thumbCache.set(key, url); return url;
+}
+function looksHTML(){
+  const br = S.breed || 'classic', co = S.coat || 'solid', th = Math.round(84*MAPB.h/MAPB.w);
+  const btn = (act, id, name, img, on) => `<button class="look" data-act="${act}" data-v="${id}" data-fk="${act}-${id}" aria-pressed="${on}"><img src="${img}" alt="" width="84" height="${th}"><span>${name}</span></button>`;
+  return `<div class="looks-sec"><span class="lab">Breed</span><div class="looks-grid">${BREEDS.map(b => btn('breed', b.id, b.name, lookThumb(b.id, co), br === b.id)).join('')}</div></div>
+    <div class="looks-sec"><span class="lab">Coat</span><div class="looks-grid coats">${COATS.map(c => btn('coat', c.id, c.name, lookThumb(br, c.id), co === c.id)).join('')}</div></div>`;
 }
 function renderLooks(){
   const el = $('#looks'); if (!el || el.hidden) return;
-  el.innerHTML = `<p class="eyebrow">Just for fun</p><p>Dress up the drawing. Your ratings stay the same.</p>
-    <div class="looks-grid">${BREEDS.map(b => `<button class="look" data-act="breed" data-v="${b.id}" data-fk="look-${b.id}" aria-pressed="${(S.breed || 'classic') === b.id}"><img src="${lookThumb(b.id)}" alt="" width="84" height="${Math.round(84*MAPB.h/MAPB.w)}"><span>${b.name}</span></button>`).join('')}</div>`;
+  el.innerHTML = `<p class="eyebrow">Just for fun</p><p>Dress up the drawing. Your ratings stay the same.</p>${looksHTML()}`;
 }
+function renderLooksInline(){
+  const el = $('#looks-inline'); if (!el) return;
+  el.innerHTML = `<div class="looks-inline-head"><h3>The cat's look</h3><span>Just for fun. Pick a breed and a coat for the drawing.</span></div>${looksHTML()}`;
+}
+function refreshLooks(){ rerender(() => { renderLooks(); renderLooksInline(); }); placeLooks(); }
 function placeLooks(){
   const el = $('#looks'); if (!el || el.hidden || !looksAnchor) return;
   const r = looksAnchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
@@ -1253,7 +1268,9 @@ document.addEventListener('click', e => {
     case 'savepng': doSave('png'); break;
     case 'print': doPrint(); break;
     case 'looks': { const el = $('#looks'); if (el.hidden) openLooks(b); else closeLooks(); break; }
-    case 'breed': S.breed = v; syncCat(); setDirty(); rerender(renderLooks); if (view === 'zones') drawMap(); if (view === 'print') updatePreview(); break;
+    case 'breed': case 'coat':
+      if (act === 'breed'){ S.breed = v; if (BREED[v].coat) S.coat = BREED[v].coat; } else S.coat = v;
+      syncCat(); setDirty(); refreshLooks(); if (view === 'zones') drawMap(); if (view === 'print') updatePreview(); break;
   }
 });
 function scrollCtl(){ if (window.innerWidth <= 860){ const c = $('.zcard'); if (c){ const top = c.getBoundingClientRect().top; const mapH = ($('.map-col') || {}).offsetHeight || 0; if (top < mapH + 70) window.scrollBy({ top: top - mapH - 80, behavior:'smooth' }); } } }
@@ -1290,6 +1307,7 @@ fontsReady.then(() => { if (view === 'home') renderHome(); });
 
 /* ---------------- boot ---------------- */
 (function boot(){
+  S = load();
   const h = (location.hash || '').slice(1);
   if (S && STEPS.some(s => s[0] === h)) go(h); else go('home');
 })();

@@ -260,7 +260,7 @@ figcaption{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
 /* ---------------- data ---------------- */
 const LEVELS = [
   { id:'fav',    label:'Favorite spot',   desc:'Start here. Pure bliss.',      v:0,    color:'#2F6FD6', text:'#1E4E9E', glyph:'#ffffff' },
-  { id:'always', label:'Always OK',       desc:'Welcome any time.',            v:0.25, color:'#25A464', text:'#16704A', glyph:'#ffffff' },
+  { id:'always', label:'Nice',            desc:'Welcome any time.',            v:0.25, color:'#25A464', text:'#16704A', glyph:'#ffffff' },
   { id:'lovemood', label:'Will love when in the mood',     desc:'A hit when the mood is right.',   v:0.25, color:'#25A464', accent:'#EF7B2A', pattern:'dots', text:'#16704A', glyph:'#ffffff' },
   { id:'tolerate', label:'Will tolerate when in the mood', desc:'Puts up with it. Keep it short.', v:0.75, color:'#EF7B2A', accent:'#C4202F', pattern:'plus', text:'#9C4510', glyph:'#ffffff' },
   { id:'danger', label:'Danger zone',     desc:'Hands off.',                   v:1,    color:'#D6303F', text:'#A11E2B', glyph:'#ffffff' },
@@ -309,6 +309,17 @@ const TIPS = {
   elevator:'If {their} butt goes up, that means yes', tapping:'Light pats here, not strokes', nohold:'Never hold or pull it',
   pawsaway:"Pulls {their} paws away. Don't hold them.", kick:'May kick with {their} back feet', linger:'Pulls away if you linger',
   nails:'Hates having {their} nails touched',
+  // by rating
+  startfav:'Start here', nicestart:'A good place to start', nicestrokes:'Gentle strokes are always welcome',
+  notstraight:"Don't go straight here", nolinger:"Don't linger too long without keeping an eye out for signs",
+  warmup:'Warm up with {their} favorite spots first', settled:"Wait until {theyre} relaxed and settled",
+  fewonly:'Keep it to a few strokes', onlyrelaxed:"Only if {theyre} already relaxed", firstsign:'Stop at the first sign of annoyance',
+  notouch:'Hands off, even if {they} roll{s} over', warnsign:'Will warn you once. Listen the first time.',
+};
+const LEVEL_TIPS = {
+  fav:['startfav','purr'], always:['nicestart','nicestrokes'],
+  lovemood:['notstraight','nolinger','warmup','settled'],
+  tolerate:['fewonly','onlyrelaxed','firstsign'], danger:['notouch','grab','warnsign'],
 };
 const GENERAL_TIPS = ['purr','lean','gentle','firm','fewstrokes','sniff','waitbump','sleepy','tailflick','grab','bites'];
 const ZONE_META = {
@@ -882,8 +893,9 @@ function renderZoneCtl(){
   const id = ZONE_ORDER[zi], z = CAT.byId[id], meta = ZONE_META[id], zs = S.zones[id] || { level:'', tips:[] }, p = P();
   const typ = LV[meta.typical], n = catName();
   const sel = zs.tips || [];
-  const general = GENERAL_TIPS.filter(k => !meta.tips.includes(k));
-  const tipIds = meta.tips.concat(general.filter(k => moreTips || sel.some(t => t.k === k)));
+  const levelTips = LEVEL_TIPS[zs.level] || [], base = [...new Set(levelTips.concat(meta.tips))];
+  const extra = (moreTips ? GENERAL_TIPS : []).concat(sel.filter(t => t.k).map(t => t.k));
+  const tipIds = base.concat([...new Set(extra)].filter(k => !base.includes(k) && TIPS[k]));
   const nextId = ZONE_ORDER[zi + 1], nSet = ZONE_ORDER.filter(k => S.zones[k] && S.zones[k].level).length;
   $('#zonectl').innerHTML = `
     <div class="card zcard">
@@ -1091,7 +1103,7 @@ document.addEventListener('click', e => {
     case 'add': addCustom(g); break;
     case 'rmphoto': S.photo = null; setDirty(); rerenderCurrent(); break;
     case 'zone': zi = +b.dataset.i; moreTips = false; rerenderCurrent(); break;
-    case 'moretips': moreTips = true; rerenderCurrent(); { const f = document.querySelector('#zonectl .chips .chip:nth-child(' + (ZONE_META[ZONE_ORDER[zi]].tips.length + 1) + ')'); if (f) f.focus({ preventScroll:true }); } break;
+    case 'moretips': { const before = document.querySelectorAll('#zonectl .chips .chip:not(.custom)').length; moreTips = true; rerenderCurrent(); const f = document.querySelectorAll('#zonectl .chips .chip:not(.custom)')[before - 1]; if (f) f.focus({ preventScroll:true }); break; }
     case 'zprev': if (zi > 0){ zi--; moreTips = false; rerenderCurrent(); scrollCtl(); } break;
     case 'znext': if (zi < 13){ zi++; moreTips = false; rerenderCurrent(); scrollCtl(); } break;
     case 'skipzone': if (zi < 13){ zi++; moreTips = false; rerenderCurrent(); scrollCtl(); } else go('mood'); break;

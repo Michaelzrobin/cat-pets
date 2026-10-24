@@ -321,7 +321,7 @@ const TIPS = {
   lyingdown:"Only when {theyre} lying down", arch:'Arches into long strokes', twitchy:'Skin starts twitching after a few strokes',
   elevator:'If {their} butt goes up, that means yes', tapping:'Light pats here, not strokes', nohold:'Never hold or pull it',
   pawsaway:"Pulls {their} paws away. Don't hold them.", kick:'May kick with {their} back feet', linger:'Pulls away if you linger',
-  nails:'Hates having {their} nails touched',
+  nails:'Hates having {their} nails touched', nosestroke:'Slow strokes down the nose with one finger',
   // by rating
   startfav:'Start here', nicestart:'A good place to start', nicestrokes:'Gentle strokes are always welcome',
   notstraight:"Don't go straight here", nolinger:"Don't linger too long without keeping an eye out for signs",
@@ -336,7 +336,8 @@ const LEVEL_TIPS = {
 };
 const GENERAL_TIPS = ['purr','lean','gentle','firm','fewstrokes','sniff','waitbump','sleepy','tailflick','grab','bites'];
 const ZONE_META = {
-  forehead: { typical:'fav',    hint:'Most cats love a slow forehead rub.', tips:['headbump','slowblink','fingertips'] },
+  tophead:  { typical:'fav',    hint:'Most cats love a slow rub on top of the head.', tips:['headbump','slowblink','fingertips'] },
+  nose:     { typical:'always', hint:'Many cats melt when you stroke down the nose with one finger.', tips:['nosestroke','slowblink','gentle'] },
   ears:     { typical:'always', hint:'Many cats like a gentle rub at the base of the ears.', tips:['earbase','gentle','fewstrokes'] },
   cheeks:   { typical:'fav',    hint:'Cheeks have scent glands, so most cats adore this.', tips:['facerub','fingertips'] },
   chin:     { typical:'fav',    hint:'A classic favorite.', tips:['chinscratch','purr','lean'] },
@@ -351,7 +352,7 @@ const ZONE_META = {
   hindlegs: { typical:'tolerate',   hint:'Many cats are touchy about their back legs.', tips:['kick','linger'] },
   paws:     { typical:'danger', hint:'Most cats are sensitive about their paws.', tips:['pawsaway','nails'] },
 };
-const ZONE_ORDER = ['forehead','ears','cheeks','chin','neck','chest','back','sides','belly','tailbase','tail','frontlegs','hindlegs','paws'];
+const ZONE_ORDER = ['tophead','ears','nose','cheeks','chin','neck','chest','back','sides','belly','tailbase','tail','frontlegs','hindlegs','paws'];
 const HELLO = { sniff:'Offer a finger to sniff', comes:'Let {them} come to you', blink:'Slow-blink first', talk:'Talk softly first', treat:'Bring a treat' };
 const PRESSURE = { light:'Feather-light', gentle:'Gentle', firm:'Firm scratches' };
 const SESSION = { few:'A few strokes', minutes:'A few minutes', long:'As long as {they} like{s}' };
@@ -364,7 +365,7 @@ function example(){
   const z = (level, ...tips) => ({ level, tips: tips.map(k => ({k})) });
   return Object.assign(blank(), {
     name:'Biscuit', pronoun:'she', about:'Sweet, chatty, and very clear about her boundaries.', isExample:true,
-    zones:{ forehead:z('fav','headbump'), ears:z('always','earbase'), cheeks:z('fav','facerub'), chin:z('fav','purr'), neck:z('always'),
+    zones:{ tophead:z('fav','headbump'), nose:z('always','nosestroke'), ears:z('always','earbase'), cheeks:z('fav','facerub'), chin:z('fav','purr'), neck:z('always'),
       chest:z('lovemood','lyingdown'), back:z('always','longstrokes'), sides:z('tolerate','fewstrokes'), belly:z('danger','trap','grab'),
       tailbase:z('lovemood','elevator','tailflick'), tail:z('danger','nohold'), frontlegs:z('tolerate'), hindlegs:z('danger','kick'), paws:z('danger','pawsaway') },
     hello:'sniff', pressure:'gentle', session:'minutes',
@@ -378,7 +379,7 @@ function example(){
 /* ---------------- state ---------------- */
 const KEY = 'cat-petting-guide:v1';
 let S = null, view = 'home', zi = 0, confirmNew = false, hoverZone = null, moreTips = false;
-function load(){ try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && o.v === 1){ const st = Object.assign(blank(), o); for (const k in st.zones){ const zl = st.zones[k]; if (zl && OLD_LEVELS[zl.level]) zl.level = OLD_LEVELS[zl.level]; } return st; } } } catch(e){} return null; }
+function load(){ try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && o.v === 1){ const st = Object.assign(blank(), o); if (st.zones.forehead && !st.zones.tophead){ st.zones.tophead = st.zones.forehead; } delete st.zones.forehead; for (const k in st.zones){ const zl = st.zones[k]; if (zl && OLD_LEVELS[zl.level]) zl.level = OLD_LEVELS[zl.level]; } return st; } } } catch(e){} return null; }
 let saveT = 0;
 function save(){ clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){ try { localStorage.setItem(KEY, JSON.stringify(Object.assign({}, S, {photo:null}))); } catch(e2){} } }, 250); }
 S = load();
@@ -477,9 +478,10 @@ function buildCat(B){
     { id:'frontlegs', name:'Front legs', path:poly([[180,292],[280,296],[282,372],[176,372]]), a:[[211,334]], side:'L' },
     { id:'paws', name:'Paws', path:poly([[160,372],[300,372],[300,410],[160,410]]), path2:poly([[400,372],[510,372],[510,410],[400,410]]), a:[[198,388],[478,388]], side:'L', branch:true },
     { id:'tail', name:'Tail', path:poly([[526,20],[630,20],[630,214],[526,214]]), a:[[587,120]], side:'R' },
-    { id:'forehead', name:'Forehead', path:ellipse(130,150,92,80), a:[[130,112]], side:'L' },
+    { id:'tophead', name:'Top of head', path:ellipse(130,150,92,80), a:[[130,108]], side:'T' },
+    { id:'nose', name:'Bridge of nose', path:roundedPoly([[117,126],[143,126],[139,171],[121,171]],6), a:[[130,146]], side:'L' },
     { id:'ears', name:'Ears', path:roundedPoly([[40,130],[50,0],[126,98],[88,122]],4), path2:roundedPoly([[134,98],[210,0],[220,130],[172,122]],4), a:[[B.ears === 'fold' ? 86 : 84, B.ears === 'fold' ? 100 : 88],[176,88]], side:'L', branch:true },
-    { id:'cheeks', name:'Cheeks', path:ruff ? ellipse(80,180,40,32,0.2) : ellipse(84,172,34,26,0.2), path2:ruff ? ellipse(180,180,40,32,-0.2) : ellipse(176,172,34,26,-0.2), a:[[74,176],[186,176]], side:'L' },
+    { id:'cheeks', name:'Cheeks', path:ruff ? ellipse(80,180,40,32,0.2) : ellipse(84,176,35,29,0.2), path2:ruff ? ellipse(180,180,40,32,-0.2) : ellipse(176,176,35,29,-0.2), a:[[74,176],[186,176]], side:'L' },
     { id:'chin', name:'Chin', path:ruff ? ellipse(130,214,38,22) : ellipse(130,206,32,15), a:[[130,205]], side:'L' },
   ];
   Z.forEach((z, i) => { z.i = i; if (z.path2){ const p = new Path2D(z.path); p.addPath(z.path2); z.full = p; } else z.full = z.path; });
@@ -769,11 +771,13 @@ function layoutSheet(ctx, st, pp, dpi, k, dry, photo){
 
   /* callouts around the map: L/R columns, T row above, B row below */
   const gutter = I(0.16), colW = cw*0.215, mapW = cw - 2*(colW + gutter), mapH = mapW * MAPB.h / MAPB.w;
-  const mapX = m + colW + gutter, rowGap = I(0.14), rowW = Math.min(I(1.32), (mapW - 2*rowGap)/3);
+  const mapX = m + colW + gutter, rowGap = I(0.14);
   const set = ZONE_ORDER.filter(id => st.zones[id] && LV[st.zones[id].level]), G = getCat(st.breed);
+  const rowCount = side => set.filter(id => G.byId[id].side === side).length;
+  const rowWOf = { T:Math.min(I(1.32), (mapW - Math.max(0, rowCount('T') - 1)*rowGap)/Math.max(1, rowCount('T'))), B:Math.min(I(1.32), (mapW - Math.max(0, rowCount('B') - 1)*rowGap)/Math.max(1, rowCount('B'))) };
   const nameS = 7*k, lvS = 7.8*k, tipS = 9.4*k, badgeD = pt(10.5*k), innerGap = I(0.035*k), blockGap = I(0.13*k);
   const blocks = set.map(id => { const z = G.byId[id], zs = st.zones[id], L = LV[zs.level], side = z.side, inRow = side === 'T' || side === 'B';
-    const indent = inRow ? 0 : badgeD + I(0.07), tw = (inRow ? rowW : colW) - indent;
+    const indent = inRow ? 0 : badgeD + I(0.07), tw = (inRow ? rowWOf[side] : colW) - indent;
     font(400, nameS, F.disp); const nameLines = wrap(z.name.toUpperCase(), inRow ? tw - badgeD - I(0.06) : tw);
     font(700, lvS, F.body); const lvLines = wrap(L.label, tw);
     font(400, tipS, F.hand); const tips = (zs.tips || []).map(t => tipText(t, st)).filter(Boolean).map(t => wrap(t, tw));
@@ -821,7 +825,7 @@ function layoutSheet(ctx, st, pp, dpi, k, dry, photo){
   });
   // rows above and below the map
   [['T', bandTop + topH, 'bottom'], ['B', botY, 'top']].forEach(([side, edgeY, anchorEdge]) => {
-    const bs = blocks.filter(b => b.side === side).sort((a, b) => a.pa[0] - b.pa[0]); if (!bs.length) return;
+    const bs = blocks.filter(b => b.side === side).sort((a, b) => a.pa[0] - b.pa[0]); if (!bs.length) return; const rowW = rowWOf[side];
     const lo = mapX, hi = mapX + mapW, xs = bs.map(b => b.pa[0] - rowW/2);
     for (let it = 0; it < 60; it++){ // spread overlapping blocks apart evenly, keep inside the map's width
       for (let i = 0; i < xs.length - 1; i++){ const ov = xs[i] + rowW + rowGap - xs[i+1]; if (ov > 0){ xs[i] -= ov/2; xs[i+1] += ov/2; } }
@@ -947,7 +951,7 @@ function renderStepper(){
   const el = $('#stepper'); if (view === 'home'){ el.innerHTML = ''; return; }
   const idx = STEPS.findIndex(s => s[0] === view);
   const nSet = S ? ZONE_ORDER.filter(id => S.zones[id] && S.zones[id].level).length : 0;
-  el.innerHTML = STEPS.map(([id, label], i) => `<button class="st${i < idx ? ' done' : ''}" data-act="go" data-v="${id}" ${i === idx ? 'aria-current="step"' : ''}><span class="n">${i+1}</span><span class="lbl">${label}${id === 'zones' && nSet ? ` <span class="cnt">${nSet}/14</span>` : ''}</span></button>`).join('');
+  el.innerHTML = STEPS.map(([id, label], i) => `<button class="st${i < idx ? ' done' : ''}" data-act="go" data-v="${id}" ${i === idx ? 'aria-current="step"' : ''}><span class="n">${i+1}</span><span class="lbl">${label}${id === 'zones' && nSet ? ` <span class="cnt">${nSet}/${ZONE_ORDER.length}</span>` : ''}</span></button>`).join('');
 }
 function renderHome(){
   const has = !!(S && (S.name || Object.keys(S.zones).length));
@@ -963,7 +967,7 @@ function renderHome(){
       </div>
       ${confirmNew ? `<div class="confirm" role="alert"><span>This replaces ${esc(possessive(nm))} guide.</span><button class="btn sm primary" data-act="newconfirm">Start over</button><button class="btn sm ghost" data-act="newcancel">Keep it</button></div>` : ''}
     </div>
-    <ol class="how"><li>Tell us about your cat</li><li>Rate 14 parts of the body, from chin to tail</li><li>Add mood signs, warnings and notes</li><li>Save it as a PDF and print it</li></ol>
+    <ol class="how"><li>Tell us about your cat</li><li>Rate 15 parts of the body, from nose to tail</li><li>Add mood signs, warnings and notes</li><li>Save it as a PDF and print it</li></ol>
     <figure class="home-sheet"><div class="paper"><img id="homeimg" alt="Example petting guide for a cat named Biscuit, with a heat map of where to pet her" width="680" height="880"></div><figcaption>Example printout for Biscuit</figcaption></figure>`;
   renderSheet(example(), 80, 'letter').then(cv => { const im = $('#homeimg'); if (im) im.src = cv.toDataURL('image/png'); });
 }
@@ -998,7 +1002,7 @@ function renderZoneCtl(){
   const nextId = ZONE_ORDER[zi + 1], nSet = ZONE_ORDER.filter(k => S.zones[k] && S.zones[k].level).length;
   $('#zonectl').innerHTML = `
     <div class="card zcard">
-      <div class="zhead"><div><p class="count">Part ${zi + 1} of 14</p><h2>${z.name}</h2></div></div>
+      <div class="zhead"><div><p class="count">Part ${zi + 1} of ${ZONE_ORDER.length}</p><h2>${z.name}</h2></div></div>
       <p class="hint">${esc(meta.hint)}</p>
       <div class="levels" role="radiogroup" aria-label="How does ${esc(n)} feel about this spot?">
         ${LEVELS.map(l => `<button class="lv" role="radio" aria-checked="${zs.level === l.id}" data-act="level" data-v="${l.id}" data-fk="lv-${l.id}" style="--c:${l.color}"><span class="badge" style="background:${swatchBg(l)}">${glyphSVG(l.id, l.glyph)}</span><span class="lt"><b>${l.label}</b><small>${esc(l.desc)}</small>${meta.typical === l.id ? '<span class="typ">Most cats</span>' : ''}</span><svg class="ck" viewBox="0 0 20 20" aria-hidden="true"><path d="M5.4 10.4l3.1 3.1 6.1-6.9" fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`).join('')}
@@ -1015,7 +1019,7 @@ function renderZoneCtl(){
         ${nextId ? `<button class="btn primary" data-act="znext">Next: ${CAT.byId[nextId].name} →</button>` : `<button class="btn primary" data-act="go" data-v="mood">Done with zones →</button>`}
       </div>
     </div>
-    <div class="quick">${nSet < 14 ? `<span>In a hurry?</span><button class="btn ghost sm" data-act="typical">Fill the rest like a typical cat</button>` : ''}${nSet ? `<button class="linkbtn" data-act="clearzones">Clear all zones</button>` : ''}</div>`;
+    <div class="quick">${nSet < ZONE_ORDER.length ? `<span>In a hurry?</span><button class="btn ghost sm" data-act="typical">Fill the rest like a typical cat</button>` : ''}${nSet ? `<button class="linkbtn" data-act="clearzones">Clear all zones</button>` : ''}</div>`;
   $('#zstrip').innerHTML = ZONE_ORDER.map((k, i) => { const l = S.zones[k] && LV[S.zones[k].level]; return `<button class="zchip" role="listitem" data-act="zone" data-i="${i}" data-fk="zc-${k}" ${i === zi ? 'aria-current="true"' : ''}><span class="dot" style="${l ? `--c:${l.color};background:${swatchBg(l)}` : ''}"></span>${CAT.byId[k].name}</button>`; }).join('');
   const cur = $('#zstrip .zchip[aria-current="true"]'); if (cur){ const st = cur.parentElement; st.scrollLeft = cur.offsetLeft - st.clientWidth/2 + cur.offsetWidth/2; }
   renderStepper();
@@ -1063,13 +1067,13 @@ function renderNotes(){
 }
 let previewToken = 0;
 function renderPrint(){
-  const s = S, n = catName(), nSet = ZONE_ORDER.filter(k => s.zones[k] && s.zones[k].level).length;
+  const s = S, n = catName(), nSet = ZONE_ORDER.filter(k => s.zones[k] && s.zones[k].level).length, nLeft = ZONE_ORDER.length - nSet;
   $('#v-print').innerHTML = `
     <div class="step-head"><p class="eyebrow">Step 5 of 5</p><h1>${esc(n === 'your cat' ? 'Your' : possessive(n))} guide is ready to print</h1><p class="lede">Check it over, then save it. It fits on one page.</p></div>
     <div class="print-grid">
       <div class="preview"><div class="paper"><img id="sheetimg" alt="Printable petting guide preview" width="935" height="1210"></div></div>
       <div class="actions">
-        ${nSet < 14 ? `<p class="fallback">${14 - nSet} part${14 - nSet === 1 ? '' : 's'} of the body ${14 - nSet === 1 ? 'is' : 'are'} still unrated and show${14 - nSet === 1 ? 's' : ''} as grey stripes. <button class="linkbtn" data-act="go" data-v="zones">Rate ${14 - nSet === 1 ? 'it' : 'them'}</button></p>` : ''}
+        ${nLeft ? `<p class="fallback">${nLeft} part${nLeft === 1 ? '' : 's'} of the body ${nLeft === 1 ? 'is' : 'are'} still unrated and show${nLeft === 1 ? 's' : ''} as grey stripes. <button class="linkbtn" data-act="go" data-v="zones">Rate ${nLeft === 1 ? 'it' : 'them'}</button></p>` : ''}
         <div><span class="lab">Paper size</span>${seg('paper', { letter:'US Letter', a4:'A4' }, s.paper)}<div style="margin-top:10px"><button class="linkbtn look-link" data-act="looks" aria-haspopup="dialog">Change the cat's look, just for fun</button></div></div>
         <div id="saveactions"></div>
         <ul class="pts"><li>Open the PDF and print at 100% or "Actual size".</li><li>Stick it on the fridge or next to the food bowl for sitters and guests.</li><li>Your answers stay in this browser, so you can come back and edit.</li></ul>
@@ -1237,8 +1241,8 @@ document.addEventListener('click', e => {
     case 'zone': zi = +b.dataset.i; moreTips = false; rerenderCurrent(); break;
     case 'moretips': { const before = document.querySelectorAll('#zonectl .chips .chip:not(.custom)').length; moreTips = true; rerenderCurrent(); const f = document.querySelectorAll('#zonectl .chips .chip:not(.custom)')[before - 1]; if (f) f.focus({ preventScroll:true }); break; }
     case 'zprev': if (zi > 0){ zi--; moreTips = false; rerenderCurrent(); scrollCtl(); } break;
-    case 'znext': if (zi < 13){ zi++; moreTips = false; rerenderCurrent(); scrollCtl(); } break;
-    case 'skipzone': if (zi < 13){ zi++; moreTips = false; rerenderCurrent(); scrollCtl(); } else go('mood'); break;
+    case 'znext': if (zi < ZONE_ORDER.length - 1){ zi++; moreTips = false; rerenderCurrent(); scrollCtl(); } break;
+    case 'skipzone': if (zi < ZONE_ORDER.length - 1){ zi++; moreTips = false; rerenderCurrent(); scrollCtl(); } else go('mood'); break;
     case 'level': { const id = ZONE_ORDER[zi]; if (!v){ delete S.zones[id]; } else { const zs = S.zones[id] || { tips:[] }; zs.level = v; S.zones[id] = zs; } setDirty(); rerenderCurrent(); break; }
     case 'tip': { const zs = S.zones[ZONE_ORDER[zi]]; if (!zs) break; const i = zs.tips.findIndex(t => t.k === v); if (i >= 0) zs.tips.splice(i, 1); else zs.tips.push({ k:v }); setDirty(); rerenderCurrent(); break; }
     case 'rmtip': { const zs = S.zones[ZONE_ORDER[zi]]; if (!zs) break; const i = zs.tips.findIndex(t => t.t === b.dataset.t); if (i >= 0) zs.tips.splice(i, 1); setDirty(); rerenderCurrent(); break; }

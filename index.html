@@ -130,7 +130,19 @@ figcaption{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
 .zones-grid > *{min-width:0}
 .map-col{position:sticky;top:calc(env(safe-area-inset-top,0px) + 74px)}
 .map-card{padding:14px 14px 12px}
-.map-wrap{display:flex;justify-content:center}
+.map-wrap{display:flex;justify-content:center;position:relative}
+.look-btn{position:absolute;right:0;bottom:0;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--muted);display:grid;place-items:center;padding:0;opacity:.85}
+.look-btn:hover{color:var(--ink);opacity:1;border-color:var(--ink)}
+.look-btn svg{width:18px;height:18px}
+.looks{position:fixed;z-index:30;width:min(348px,calc(100vw - 24px));background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px -16px rgba(10,14,25,.45);padding:14px 14px 12px}
+.looks .eyebrow{margin:0 0 2px}
+.looks p{margin:0 0 10px;font-size:13.5px;color:var(--muted)}
+.looks-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.look{display:grid;gap:2px;justify-items:center;border:1.5px solid transparent;background:none;border-radius:10px;padding:4px 2px 5px;font-size:11.5px;line-height:1.2;color:var(--muted);text-align:center}
+.look img{width:100%;height:auto;display:block;border-radius:6px}
+.look:hover{background:var(--wash);color:var(--ink)}
+.look[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);font-weight:700}
+.look-link{display:inline-flex;align-items:center;gap:6px}
 #map{display:block;touch-action:manipulation;cursor:pointer;max-width:100%}
 .mini-legend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:10px;font-size:13px;color:var(--muted)}
 .mini-legend span{display:inline-flex;align-items:center;gap:6px}
@@ -232,7 +244,7 @@ figcaption{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
     <div class="zones-grid">
       <div class="map-col">
         <div class="card map-card">
-          <div class="map-wrap" id="mapwrap"><canvas id="map" role="img" aria-label="Cat body map"></canvas></div>
+          <div class="map-wrap" id="mapwrap"><canvas id="map" role="img" aria-label="Cat body map"></canvas><button class="look-btn" data-act="looks" aria-haspopup="dialog" aria-label="Change how the cat looks" title="Change how the cat looks"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4.6 19.4v-8.2L3.8 4.6l4 2.5a8.4 8.4 0 0 1 6.4 0l4-2.5-.8 6.6v8.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.6 12.6q.9-.8 1.8 0M11.6 12.6q.9-.8 1.8 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M18.6 13.2l.55 1.25 1.25.55-1.25.55-.55 1.25-.55-1.25-1.25-.55 1.25-.55z" fill="currentColor"/></svg></button></div>
           <div class="mini-legend" id="minilegend"></div>
           <div class="zstrip" id="zstrip" role="list" aria-label="Body parts"></div>
           <p class="map-help">Tap any part of the cat to jump to it.</p>
@@ -246,6 +258,7 @@ figcaption{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
   <section class="view" id="v-print" hidden></section>
 </main>
 
+<div class="looks" id="looks" role="dialog" aria-label="Cat looks" hidden></div>
 <div id="printwrap" aria-hidden="true"><img id="printimg" alt=""></div>
 <style id="pagesize">@page{size:letter;margin:0}</style>
 <nav class="bottombar" id="bottombar" hidden>
@@ -346,7 +359,7 @@ const HAPPY = { purr:'Purring', slowblink:'Slow blinks', headbump:'Head bumps', 
 const STOP = { tail:'Tail swishing or thumping', ears:'Ears turning sideways or flat', ripple:'Skin rippling along the back', look:'Turning to stare at your hand', still:'Going suddenly still', pupils:'Big, dark pupils', growl:'Growling or hissing', grab:'Grabbing with paws', leave:'Walking away' };
 const WARN = { pickup:"Don't pick {them} up", wake:'Never wake {them} up to pet {them}', eating:"No petting while {theyre} eating", door:'Door dasher. Keep outside doors closed.', kids:"Don't let kids chase {them}", overstim:'Gets overstimulated fast. Keep sessions short.', lap:'Not a lap cat. Let {them} choose where to sit.' };
 
-function blank(){ return { v:1, name:'', pronoun:'she', about:'', photo:null, zones:{}, hello:'', helloCustom:'', pressure:'', session:'', happy:[], happyCustom:[], stop:[], stopCustom:[], warn:[], warnCustom:[], notes:'', contactName:'', contactPhone:'', paper:'letter', isExample:false }; }
+function blank(){ return { v:1, name:'', pronoun:'she', about:'', photo:null, zones:{}, hello:'', helloCustom:'', pressure:'', session:'', happy:[], happyCustom:[], stop:[], stopCustom:[], warn:[], warnCustom:[], notes:'', contactName:'', contactPhone:'', paper:'letter', breed:'classic', isExample:false }; }
 function example(){
   const z = (level, ...tips) => ({ level, tips: tips.map(k => ({k})) });
   return Object.assign(blank(), {
@@ -377,7 +390,25 @@ const possessive = n => n === 'your cat' ? "your cat's" : (/s$/i.test(n) ? n + "
 function tipText(t, st){ return t.k ? fmt(TIPS[t.k] || '', st) : t.t; }
 
 /* ---------------- cat geometry (design units) ---------------- */
-const CAT = (() => {
+const BREEDS = [
+  { id:'classic',   name:'Classic' },
+  { id:'tabby',     name:'Tabby',         marks:'tabby' },
+  { id:'siamese',   name:'Siamese',       ears:'big',    head:[64,58,70,42], tail:[11,7,0],     legs:0.9,  marks:'points' },
+  { id:'mainecoon', name:'Maine Coon',    ears:'tufted', ruff:7,             tail:[18,13,0.3],  legs:1.06, marks:'coon' },
+  { id:'persian',   name:'Persian',       ears:'small',  head:[72,62,80,46], ruff:6, tail:[18,15,0.32], marks:'fluff', noseDy:-4 },
+  { id:'fold',      name:'Scottish Fold', ears:'fold',   head:[70,60,80,44], marks:'fold' },
+  { id:'sphynx',    name:'Sphynx',        ears:'huge',   head:[64,58,72,42], tail:[10,5,0],     legs:0.85, marks:'wrinkles', whisk:0.45 },
+  { id:'bengal',    name:'Bengal',        marks:'spots' },
+];
+const BREED = Object.fromEntries(BREEDS.map(b => [b.id, b]));
+const EARS = {
+  classic:[[64,126],[68,46],[118,96]], tufted:[[62,126],[64,40],[118,96]], big:[[60,128],[56,30],[122,96]],
+  huge:[[54,128],[44,18],[126,92]], small:[[72,116],[78,72],[110,98]],
+};
+const catCache = new Map();
+function getCat(id){ id = BREED[id] ? id : 'classic'; if (!catCache.has(id)) catCache.set(id, buildCat(BREED[id])); return catCache.get(id); }
+function buildCat(B){
+  const head = B.head || [68,58,80,44], legs = B.legs || 1, tl = B.tail || [14,10,0];
   function ellipse(cx, cy, rx, ry, rot){ const p = new Path2D(); p.ellipse(cx, cy, rx, ry, rot || 0, 0, Math.PI * 2); return p; }
   function roundedPoly(pts, r){
     const p = new Path2D(), n = pts.length, a = pts[n-1], b = pts[0];
@@ -402,11 +433,14 @@ const CAT = (() => {
     p.arc(s0[0], s0[1], s0[2], a0 + Math.PI/2, a0 + Math.PI*1.5, false);
     p.closePath(); return p;
   }
-  function bezTube(p0, p1, p2, p3, r0, r1, n){ const s = []; for (let i = 0; i <= n; i++){ const t = i/n, u = 1-t;
-    s.push([u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0], u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1], r0 + (r1-r0)*t]); } return tube(s); }
+  const bezPt = (p0, p1, p2, p3, t) => { const u = 1-t; return [u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0], u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1]]; };
+  function bezTube(p0, p1, p2, p3, r0, r1, n, fur){ const s = []; for (let i = 0; i <= n; i++){ const t = i/n, q = bezPt(p0, p1, p2, p3, t);
+    let r = r0 + (r1-r0)*t; if (fur && i > 2 && i < n - 1) r *= 1 + fur*Math.pow(Math.abs(Math.sin(i*0.8)), 3); s.push([q[0], q[1], r]); } return tube(s); }
   function qTube(p0, c, p1, r0, r1){ const s = []; for (let i = 0; i <= 24; i++){ const t = i/24, u = 1-t;
     s.push([u*u*p0[0] + 2*u*t*c[0] + t*t*p1[0], u*u*p0[1] + 2*u*t*c[1] + t*t*p1[1], r0 + (r1-r0)*t]); } return tube(s); }
   function line(a, b, r0, r1){ const s = []; for (let i = 0; i <= 8; i++){ const t = i/8; s.push([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, r0+(r1-r0)*t]); } return tube(s); }
+  const mirror = pts => pts.map(p => [260 - p[0], p[1]]).reverse();
+  function spiky(cx, cy, rx, ry, n, amp){ const pts = []; for (let i = 0; i < n*2; i++){ const a = i*Math.PI/n, k = i % 2 ? 1 : 1 + amp/ry; pts.push([cx + Math.cos(a)*rx*k, cy + Math.sin(a)*ry*k]); } return poly(pts); }
 
   const torso = new Path2D();
   torso.moveTo(168, 214);
@@ -418,20 +452,20 @@ const CAT = (() => {
   torso.bezierCurveTo(160, 272, 152, 240, 168, 214);
   torso.closePath();
 
-  const farHind = qTube([438,282],[456,338],[434,378],15,12), farHindPaw = ellipse(428,383,20,10);
-  const farFront = line([254,276],[257,377],15,13), farFrontPaw = ellipse(251,382,20,10);
-  const parts = [
-    bezTube([500,206],[592,200],[592,62],[536,52],14,10,48),
-    farHind, farHindPaw, farFront, farFrontPaw, torso,
-    ellipse(470,246,48,56,-0.35),
-    qTube([488,274],[508,340],[486,380],17,13), ellipse(478,385,22,11),
-    line([214,266],[207,380],17,14), ellipse(199,386,23,11),
-    ellipse(176,196,40,40),
-    roundedPoly([[64,126],[68,46],[118,96]],[6,9,6]),
-    roundedPoly([[142,96],[192,46],[196,126]],[6,9,6]),
-    ellipse(130,146,68,58), ellipse(130,170,80,44),
-  ];
+  const TAIL = [[500,206],[592,200],[592,62],[536,52]];
+  const tail = bezTube(TAIL[0], TAIL[1], TAIL[2], TAIL[3], tl[0], tl[1], 64, tl[2]);
+  const farHind = qTube([438,282],[456,338],[434,378],15*legs,12*legs), farHindPaw = ellipse(428,383,20*legs,10);
+  const farFront = line([254,276],[257,377],15*legs,13*legs), farFrontPaw = ellipse(251,382,20*legs,10);
+  const nearHind = qTube([488,274],[508,340],[486,380],17*legs,13*legs), nearHindPaw = ellipse(478,385,22*legs,11);
+  const nearFront = line([214,266],[207,380],17*legs,14*legs), nearFrontPaw = ellipse(199,386,23*legs,11);
+  let earL, earR, earPtsL = null;
+  if (B.ears === 'fold'){ earL = ellipse(90,100,22,14,-0.45); earR = ellipse(170,100,22,14,0.45); }
+  else { earPtsL = EARS[B.ears || 'classic']; earL = roundedPoly(earPtsL, [6,9,6]); earR = roundedPoly(mirror(earPtsL), [6,9,6]); }
+  const headP = ellipse(130,146,head[0],head[1]), jowls = ellipse(130,170,head[2],head[3]);
+  const parts = [tail, farHind, farHindPaw, farFront, farFrontPaw, torso, ellipse(470,246,48,56,-0.35), nearHind, nearHindPaw, nearFront, nearFrontPaw, ellipse(176,196,40,40), earL, earR, headP, jowls];
+  if (B.ruff) parts.push(spiky(130,176,head[2]+2,head[3]+6,26,B.ruff));
   const silhouette = new Path2D(); parts.forEach(p => silhouette.addPath(p));
+  const ruff = !!B.ruff;
   const Z = [
     { id:'sides', name:'Sides', path:poly([[140,150],[560,150],[560,330],[140,330]]), a:[[392,246]], side:'B' },
     { id:'chest', name:'Chest', path:poly([[140,180],[236,180],[232,330],[140,330]]), a:[[190,256]], side:'L' },
@@ -442,33 +476,97 @@ const CAT = (() => {
     { id:'hindlegs', name:'Back legs', path:poly([[408,236],[460,222],[520,226],[570,250],[560,372],[400,372]]), a:[[490,316]], side:'R' },
     { id:'frontlegs', name:'Front legs', path:poly([[180,292],[280,296],[282,372],[176,372]]), a:[[211,334]], side:'L' },
     { id:'paws', name:'Paws', path:poly([[160,372],[300,372],[300,410],[160,410]]), path2:poly([[400,372],[510,372],[510,410],[400,410]]), a:[[198,388],[478,388]], side:'L', branch:true },
-    { id:'tail', name:'Tail', path:poly([[526,30],[620,30],[620,214],[526,214]]), a:[[587,120]], side:'R' },
-    { id:'forehead', name:'Forehead', path:ellipse(130,150,90,80), a:[[130,112]], side:'L' },
-    { id:'ears', name:'Ears', path:roundedPoly([[50,128],[64,30],[124,98],[88,120]],4), path2:roundedPoly([[136,98],[196,30],[210,128],[172,120]],4), a:[[84,88],[176,88]], side:'L', branch:true },
-    { id:'cheeks', name:'Cheeks', path:ellipse(84,172,34,26,0.2), path2:ellipse(176,172,34,26,-0.2), a:[[74,176],[186,176]], side:'L' },
-    { id:'chin', name:'Chin', path:ellipse(130,206,32,15), a:[[130,205]], side:'L' },
+    { id:'tail', name:'Tail', path:poly([[526,20],[630,20],[630,214],[526,214]]), a:[[587,120]], side:'R' },
+    { id:'forehead', name:'Forehead', path:ellipse(130,150,92,80), a:[[130,112]], side:'L' },
+    { id:'ears', name:'Ears', path:roundedPoly([[40,130],[50,0],[126,98],[88,122]],4), path2:roundedPoly([[134,98],[210,0],[220,130],[172,122]],4), a:[[B.ears === 'fold' ? 86 : 84, B.ears === 'fold' ? 100 : 88],[176,88]], side:'L', branch:true },
+    { id:'cheeks', name:'Cheeks', path:ruff ? ellipse(80,180,40,32,0.2) : ellipse(84,172,34,26,0.2), path2:ruff ? ellipse(180,180,40,32,-0.2) : ellipse(176,172,34,26,-0.2), a:[[74,176],[186,176]], side:'L' },
+    { id:'chin', name:'Chin', path:ruff ? ellipse(130,214,38,22) : ellipse(130,206,32,15), a:[[130,205]], side:'L' },
   ];
   Z.forEach((z, i) => { z.i = i; if (z.path2){ const p = new Path2D(z.path); p.addPath(z.path2); z.full = p; } else z.full = z.path; });
   const byId = Object.fromEntries(Z.map(z => [z.id, z]));
 
   function drawFace(ctx, ink){
+    const ny = B.noseDy || 0, wk = B.whisk || 1;
     ctx.save(); ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 2.4;
     [[106,150],[154,150]].forEach(([x,y]) => { ctx.beginPath(); ctx.arc(x, y-6, 11, Math.PI*0.2, Math.PI*0.8); ctx.stroke(); });
-    ctx.beginPath(); ctx.moveTo(122,168); ctx.quadraticCurveTo(130,165,138,168); ctx.quadraticCurveTo(136,175,130,177); ctx.quadraticCurveTo(124,175,122,168); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(130,177); ctx.lineTo(130,182); ctx.quadraticCurveTo(124,190,116,184); ctx.moveTo(130,182); ctx.quadraticCurveTo(136,190,144,184); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(122,168+ny); ctx.quadraticCurveTo(130,165+ny,138,168+ny); ctx.quadraticCurveTo(136,175+ny,130,177+ny); ctx.quadraticCurveTo(124,175+ny,122,168+ny); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(130,177+ny); ctx.lineTo(130,182+ny); ctx.quadraticCurveTo(124,190+ny,116,184+ny); ctx.moveTo(130,182+ny); ctx.quadraticCurveTo(136,190+ny,144,184+ny); ctx.stroke();
     ctx.lineWidth = 1.4;
-    [-1,1].forEach(s => { [-6,0,6].forEach(dy => { ctx.beginPath(); ctx.moveTo(130 + s*26, 181 + dy*0.5); ctx.quadraticCurveTo(130 + s*60, 177 + dy, 130 + s*90, 173 + dy*1.7); ctx.stroke(); }); });
+    [-1,1].forEach(s => { [-6,0,6].forEach(dy => { ctx.beginPath(); ctx.moveTo(130 + s*26, 181 + dy*0.5 + ny); ctx.quadraticCurveTo(130 + s*(26 + 34*wk), 177 + dy + ny, 130 + s*(26 + 64*wk), 173 + dy*1.7 + ny); ctx.stroke(); }); });
     ctx.lineWidth = 1.7; ctx.globalAlpha = 0.7;
-    ctx.beginPath(); ctx.moveTo(80,114); ctx.quadraticCurveTo(77,84,75,66); ctx.quadraticCurveTo(92,82,104,98); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(180,114); ctx.quadraticCurveTo(183,84,185,66); ctx.quadraticCurveTo(168,82,156,98); ctx.stroke();
+    if (earPtsL){
+      [earPtsL, mirror(earPtsL)].forEach(pts => { const cx = (pts[0][0]+pts[1][0]+pts[2][0])/3, cy = (pts[0][1]+pts[1][1]+pts[2][1])/3 + 4;
+        const q = pts.map(p => [cx + (p[0]-cx)*0.55, cy + (p[1]-cy)*0.55]);
+        ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); ctx.lineTo(q[1][0], q[1][1]); ctx.lineTo(q[2][0], q[2][1]); ctx.stroke(); });
+    } else {
+      ctx.beginPath(); ctx.moveTo(74,104); ctx.quadraticCurveTo(92,96,108,106); ctx.moveTo(186,104); ctx.quadraticCurveTo(168,96,152,106); ctx.stroke();
+    }
     ctx.beginPath(); ctx.ellipse(470,246,48,56,-0.35,2.25,3.75); ctx.stroke();
     ctx.lineWidth = 1.3;
     [[199,386],[478,385]].forEach(([x,y]) => { [-7,1].forEach(dx => { ctx.beginPath(); ctx.moveTo(x+dx-3, y+4); ctx.lineTo(x+dx-2, y+10); ctx.stroke(); }); });
     ctx.restore();
   }
-  return { parts, far:[farHind, farHindPaw, farFront, farFrontPaw], silhouette, zones:Z, byId, drawFace };
-})();
-const MAPB = { x0:28, y0:30, w:574, h:378 };
+  /* breed markings, drawn over the heat colors (multiply) and clipped to the cat */
+  function drawMarkings(ctx, ink){
+    const m = B.marks; if (!m || m === 'none') return;
+    const brown = '#3a2a20';
+    ctx.save(); ctx.clip(silhouette); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const tailAt = t => { const p = bezPt(TAIL[0], TAIL[1], TAIL[2], TAIL[3], t), q = bezPt(TAIL[0], TAIL[1], TAIL[2], TAIL[3], Math.min(1, t + 0.01)); const a = Math.atan2(q[1]-p[1], q[0]-p[0]); return [p, a, tl[0] + (tl[1]-tl[0])*t]; };
+    const tailRings = (alpha, ts) => { ctx.globalAlpha = alpha; ctx.strokeStyle = brown; ctx.lineWidth = 5; ts.forEach(t => { const [p, a, r] = tailAt(t), nx = -Math.sin(a), ny = Math.cos(a); ctx.beginPath(); ctx.moveTo(p[0] - nx*r*1.4, p[1] - ny*r*1.4); ctx.lineTo(p[0] + nx*r*1.4, p[1] + ny*r*1.4); ctx.stroke(); }); };
+    const ruffLines = alpha => { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = alpha; ctx.strokeStyle = ink; ctx.lineWidth = 1.3;
+      for (let i = 0; i < 9; i++){ const a = Math.PI*(0.18 + i*0.08), x = 130 + Math.cos(a)*(head[2] - 6), y = 176 + Math.sin(a)*(head[3] + 2); ctx.beginPath(); ctx.moveTo(x - 4, y - 7); ctx.lineTo(x, y); ctx.lineTo(x + 4, y - 7); ctx.stroke(); }
+      [[180,238],[172,256],[186,272]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 5, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 5, y - 6); ctx.stroke(); }); };
+    ctx.globalCompositeOperation = 'multiply';
+    if (m === 'tabby'){
+      ctx.globalAlpha = 0.34; ctx.strokeStyle = brown; ctx.lineWidth = 6;
+      [246,282,318,354,390,426].forEach((x, i) => { ctx.beginPath(); ctx.moveTo(x, 168); ctx.quadraticCurveTo(x + 14, 204, x - 4, i % 2 ? 230 : 244); ctx.stroke(); });
+      ctx.beginPath(); ctx.ellipse(470,246,30,36,-0.35,2.3,4.2); ctx.stroke(); ctx.beginPath(); ctx.ellipse(470,246,16,20,-0.35,2.3,4.2); ctx.stroke();
+      ctx.lineWidth = 5; [326,346,364].forEach(y => { ctx.beginPath(); ctx.moveTo(176,y); ctx.lineTo(290,y+2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(404,y+4); ctx.lineTo(540,y+6); ctx.stroke(); });
+      tailRings(0.34, [0.22,0.38,0.53,0.67,0.8,0.92]);
+      ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(112,124); ctx.lineTo(118,104); ctx.lineTo(130,118); ctx.lineTo(142,104); ctx.lineTo(148,124); ctx.stroke();
+      [[-1],[1]].forEach(([s]) => { [0,8].forEach(d => { ctx.beginPath(); ctx.moveTo(130 + s*58, 160 + d); ctx.lineTo(130 + s*76, 156 + d*1.3); ctx.stroke(); }); });
+    } else if (m === 'spots'){
+      let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+      ctx.globalAlpha = 0.4; ctx.strokeStyle = brown; ctx.fillStyle = brown; ctx.lineWidth = 3; const placed = [];
+      for (let i = 0; i < 900 && placed.length < 46; i++){
+        const x = 160 + rnd()*400, y = 172 + rnd()*222, r = 5 + rnd()*3;
+        if (!hitCtx.isPointInPath(silhouette, x, y) || hitCtx.isPointInPath(headP, x, y) || hitCtx.isPointInPath(jowls, x, y)) continue;
+        if (placed.some(q => Math.hypot(q[0] - x, q[1] - y) < 21)) continue;
+        placed.push([x, y]); const a = rnd()*Math.PI*2;
+        for (let k = 0; k < 3; k++){ ctx.beginPath(); ctx.arc(x, y, r, a + k*2.1, a + k*2.1 + 1.45); ctx.stroke(); }
+      }
+      for (let i = 0; i < 9; i++){ const x = 108 + rnd()*44, y = 102 + rnd()*26; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI*2); ctx.fill(); }
+    } else if (m === 'points'){
+      const pc = 'rgba(75,50,39,'; ctx.globalAlpha = 1;
+      ctx.save(); ctx.translate(130, 168); ctx.scale(1.3, 1); const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 52); g.addColorStop(0, pc + '0.34)'); g.addColorStop(0.55, pc + '0.22)'); g.addColorStop(1, pc + '0)'); ctx.fillStyle = g; ctx.fillRect(-60, -60, 120, 120); ctx.restore();
+      ctx.fillStyle = pc + '0.46)'; ctx.fill(earL); ctx.fill(earR);
+      const lg = ctx.createLinearGradient(0, 300, 0, 396); lg.addColorStop(0, pc + '0)'); lg.addColorStop(1, pc + '0.5)'); ctx.fillStyle = lg;
+      [farHind, farHindPaw, farFront, farFrontPaw, nearHind, nearHindPaw, nearFront, nearFrontPaw].forEach(p => ctx.fill(p));
+      const tg = ctx.createLinearGradient(520, 210, 560, 50); tg.addColorStop(0, pc + '0)'); tg.addColorStop(1, pc + '0.55)'); ctx.fillStyle = tg; ctx.fill(tail);
+    } else if (m === 'coon'){
+      tailRings(0.22, [0.3,0.5,0.7,0.88]);
+      ctx.globalCompositeOperation = 'source-over'; ctx.restore(); ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+      [earPtsL, mirror(earPtsL)].forEach(pts => { const t = pts[1]; [-4,0,4].forEach(dx => { ctx.beginPath(); ctx.moveTo(t[0] + dx*0.25, t[1] + 12); ctx.lineTo(t[0] + dx, t[1] - 3); ctx.stroke(); }); });
+      ctx.clip(silhouette); ruffLines(0.55);
+    } else if (m === 'fluff'){
+      ruffLines(0.5);
+      ctx.lineWidth = 1.2; ctx.globalAlpha = 0.45; [[260,298],[300,302],[350,300],[400,296]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 5, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 5, y - 6); ctx.stroke(); });
+    } else if (m === 'fold'){
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.7; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(74,108); ctx.quadraticCurveTo(90,92,108,100); ctx.moveTo(186,108); ctx.quadraticCurveTo(170,92,152,100); ctx.stroke();
+    } else if (m === 'wrinkles'){
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.5; ctx.strokeStyle = ink; ctx.lineWidth = 1.3;
+      [[110,118,150],[114,126,146],[120,110,140]].forEach(([x1,y,x2]) => { ctx.beginPath(); ctx.moveTo(x1, y); ctx.quadraticCurveTo(130, y - 6, x2, y); ctx.stroke(); });
+      [[196,206,212,224],[204,214,222,238],[236,230,248,250],[248,236,262,258]].forEach(([a,b,c,d]) => { ctx.beginPath(); ctx.moveTo(a, b); ctx.quadraticCurveTo(c + 6, (b + d)/2, c, d); ctx.stroke(); });
+      [[206,300],[212,310]].forEach(([x,y]) => { ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.quadraticCurveTo(x, y + 4, x + 10, y); ctx.stroke(); });
+    }
+    ctx.restore();
+  }
+  return { id:B.id, parts, far:[farHind, farHindPaw, farFront, farFrontPaw], silhouette, zones:Z, byId, drawFace, drawMarkings };
+}
+let CAT = getCat('classic');
+
+const MAPB = { x0:28, y0:12, w:574, h:396 };
 
 /* ---------------- heat map renderer ---------------- */
 const mk = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
@@ -485,12 +583,12 @@ function blurPass(src, tmp, w, h, r){
   for (let x = 0; x < w; x++){ let acc = 0; for (let y = 0; y <= r && y < h; y++) acc += tmp[y*w+x];
     for (let y = 0; y < h; y++){ src[y*w+x] = acc*inv; const ya = y+r+1, yr = y-r; if (ya < h) acc += tmp[ya*w+x]; if (yr >= 0) acc -= tmp[yr*w+x]; } }
 }
-function heatCanvas(levels, res){
+function heatCanvas(levels, res, G){
   const b = MAPB, w = Math.ceil(b.w*res), h = Math.ceil(b.h*res), c = mk(w, h), g = c.getContext('2d', { willReadFrequently:true });
   g.setTransform(res, 0, 0, res, -b.x0*res, -b.y0*res);
-  g.save(); g.clip(CAT.silhouette);
+  g.save(); g.clip(G.silhouette);
   g.fillStyle = 'rgb(0,0,255)'; g.fillRect(b.x0, b.y0, b.w, b.h);
-  for (const z of CAT.zones){ const L = LV[levels[z.id]]; g.fillStyle = L ? `rgb(${Math.round(L.v*255)},255,255)` : 'rgb(0,0,255)'; g.fill(z.full); }
+  for (const z of G.zones){ const L = LV[levels[z.id]]; g.fillStyle = L ? `rgb(${Math.round(L.v*255)},255,255)` : 'rgb(0,0,255)'; g.fill(z.full); }
   g.restore();
   const im = g.getImageData(0, 0, w, h), d = im.data, n = w*h;
   const va = new Float32Array(n), a = new Float32Array(n), m = new Float32Array(n), tmp = new Float32Array(n);
@@ -506,19 +604,19 @@ function heatCanvas(levels, res){
   g.setTransform(1,0,0,1,0,0); g.putImageData(im, 0, 0); return c;
 }
 const seamCache = new Map();
-function seamCanvas(w, h, s, color){
-  const key = [w,h,s.toFixed(4),color].join('|'); if (seamCache.has(key)) return seamCache.get(key);
+function seamCanvas(w, h, s, color, G){
+  const key = [G.id,w,h,s.toFixed(4),color].join('|'); if (seamCache.has(key)) return seamCache.get(key);
   const b = MAPB, c = mk(w, h), g = c.getContext('2d');
   g.setTransform(s, 0, 0, s, -b.x0*s, -b.y0*s); g.lineWidth = 1.15; g.strokeStyle = color; g.setLineDash([4, 3]); g.lineJoin = 'round';
-  for (const z of CAT.zones){ g.globalCompositeOperation = 'destination-out'; g.fill(z.full); g.globalCompositeOperation = 'source-over'; g.stroke(z.full); }
-  g.globalCompositeOperation = 'destination-in'; g.setLineDash([]); g.fill(CAT.silhouette);
+  for (const z of G.zones){ g.globalCompositeOperation = 'destination-out'; g.fill(z.full); g.globalCompositeOperation = 'source-over'; g.stroke(z.full); }
+  g.globalCompositeOperation = 'destination-in'; g.setLineDash([]); g.fill(G.silhouette);
   if (seamCache.size > 8) seamCache.clear(); seamCache.set(key, c); return c;
 }
-function effCanvas(idx, w, h, s){
-  const b = MAPB, c = mk(w, h), g = c.getContext('2d'); const Z = CAT.zones;
+function effCanvas(idx, w, h, s, G){
+  G = G || CAT; const b = MAPB, c = mk(w, h), g = c.getContext('2d'); const Z = G.zones;
   g.setTransform(s, 0, 0, s, -b.x0*s, -b.y0*s); g.fillStyle = '#000'; g.fill(Z[idx].full);
   g.globalCompositeOperation = 'destination-out'; for (let j = idx+1; j < Z.length; j++) g.fill(Z[j].full);
-  g.globalCompositeOperation = 'destination-in'; g.fill(CAT.silhouette); return c;
+  g.globalCompositeOperation = 'destination-in'; g.fill(G.silhouette); return c;
 }
 function ringCanvas(eff, w, h, color, rpx){
   const t = mk(w, h), tg = t.getContext('2d'); tg.drawImage(eff, 0, 0); tg.globalCompositeOperation = 'source-in'; tg.fillStyle = color; tg.fillRect(0, 0, w, h);
@@ -528,36 +626,37 @@ function ringCanvas(eff, w, h, color, rpx){
 }
 /* Draw the cat heat map into ctx at device-pixel rect (px, py, pw). Returns a mapper from design to device px. */
 function renderCatMap(ctx, px, py, pw, o){
-  const b = MAPB, s = pw / b.w, ph = b.h * s, th = o.theme, levels = o.levels || {};
+  const b = MAPB, s = pw / b.w, ph = b.h * s, th = o.theme, levels = o.levels || {}, G = o.cat || CAT;
   const T = [s, 0, 0, s, px - b.x0*s, py - b.y0*s];
   ctx.save(); ctx.setTransform(...T); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.strokeStyle = th.outline; ctx.lineWidth = 6.4; CAT.parts.forEach(p => ctx.stroke(p));
-  ctx.fillStyle = th.base; ctx.fill(CAT.silhouette);
-  ctx.save(); ctx.clip(CAT.silhouette); ctx.strokeStyle = th.hatch; ctx.lineWidth = 1.3; ctx.beginPath();
+  ctx.strokeStyle = th.outline; ctx.lineWidth = 6.4; G.parts.forEach(p => ctx.stroke(p));
+  ctx.fillStyle = th.base; ctx.fill(G.silhouette);
+  ctx.save(); ctx.clip(G.silhouette); ctx.strokeStyle = th.hatch; ctx.lineWidth = 1.3; ctx.beginPath();
   for (let k = b.x0 - 400; k < b.x0 + b.w + 400; k += 7){ ctx.moveTo(k, b.y0); ctx.lineTo(k - b.h, b.y0 + b.h); } ctx.stroke(); ctx.restore();
-  const heat = heatCanvas(levels, o.heatRes || 0.7), W = Math.ceil(pw), H = Math.ceil(ph);
-  ctx.save(); ctx.clip(CAT.silhouette); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(heat, b.x0, b.y0, b.w, b.h);
-  const marked = CAT.zones.filter(z => LV[levels[z.id]] && LV[levels[z.id]].pattern);
+  const heat = heatCanvas(levels, o.heatRes || 0.7, G), W = Math.ceil(pw), H = Math.ceil(ph);
+  ctx.save(); ctx.clip(G.silhouette); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(heat, b.x0, b.y0, b.w, b.h);
+  const marked = G.zones.filter(z => LV[levels[z.id]] && LV[levels[z.id]].pattern);
   if (marked.length){
     const acc = mk(W, H), ag = acc.getContext('2d');
     for (const z of marked){
       const L = LV[levels[z.id]], t = mk(W, H), tg = t.getContext('2d');
       tg.setTransform(s, 0, 0, s, -b.x0*s, -b.y0*s);
       drawMarks(tg, L.pattern, L.accent, b.x0 + 4, b.y0 + 4, b.x0 + b.w, b.y0 + b.h, 12);
-      tg.setTransform(1, 0, 0, 1, 0, 0); tg.globalCompositeOperation = 'destination-in'; tg.drawImage(effCanvas(z.i, W, H, s), 0, 0);
+      tg.setTransform(1, 0, 0, 1, 0, 0); tg.globalCompositeOperation = 'destination-in'; tg.drawImage(effCanvas(z.i, W, H, s, G), 0, 0);
       ag.drawImage(t, 0, 0);
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(acc, px, py); ctx.setTransform(...T);
   }
-  ctx.beginPath(); ctx.rect(b.x0, 308, b.w, 200); ctx.clip(); ctx.fillStyle = 'rgba(16,20,36,.13)'; CAT.far.forEach(p => ctx.fill(p)); ctx.restore();
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(seamCanvas(W, H, s, th.seam), px, py); ctx.setTransform(...T);
-  CAT.drawFace(ctx, th.face);
+  ctx.restore(); G.drawMarkings(ctx, th.face);
+  ctx.save(); ctx.clip(G.silhouette); ctx.beginPath(); ctx.rect(b.x0, 308, b.w, 200); ctx.clip(); ctx.fillStyle = 'rgba(16,20,36,.13)'; G.far.forEach(p => ctx.fill(p)); ctx.restore();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(seamCanvas(W, H, s, th.seam, G), px, py); ctx.setTransform(...T);
+  G.drawFace(ctx, th.face);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const dpr = o.dpr || 1;
-  if (o.hover != null && o.hover !== o.active){ const e = effCanvas(o.hover, W, H, s); ctx.drawImage(ringCanvas(e, W, H, th.outline, 1.6*dpr), px, py); }
+  if (o.hover != null && o.hover !== o.active){ const e = effCanvas(o.hover, W, H, s, G); ctx.drawImage(ringCanvas(e, W, H, th.outline, 1.6*dpr), px, py); }
   if (o.active != null){
-    const e = effCanvas(o.active, W, H, s), dim = mk(W, H), dg = dim.getContext('2d');
-    dg.setTransform(s, 0, 0, s, -b.x0*s, -b.y0*s); dg.fillStyle = th.dim; dg.fill(CAT.silhouette);
+    const e = effCanvas(o.active, W, H, s, G), dim = mk(W, H), dg = dim.getContext('2d');
+    dg.setTransform(s, 0, 0, s, -b.x0*s, -b.y0*s); dg.fillStyle = th.dim; dg.fill(G.silhouette);
     dg.setTransform(1, 0, 0, 1, 0, 0); dg.globalCompositeOperation = 'destination-out'; dg.drawImage(e, 0, 0);
     ctx.drawImage(dim, px, py); ctx.drawImage(ringCanvas(e, W, H, th.ring || th.outline, 3*dpr), px, py);
   }
@@ -671,9 +770,9 @@ function layoutSheet(ctx, st, pp, dpi, k, dry, photo){
   /* callouts around the map: L/R columns, T row above, B row below */
   const gutter = I(0.16), colW = cw*0.215, mapW = cw - 2*(colW + gutter), mapH = mapW * MAPB.h / MAPB.w;
   const mapX = m + colW + gutter, rowGap = I(0.14), rowW = Math.min(I(1.32), (mapW - 2*rowGap)/3);
-  const set = ZONE_ORDER.filter(id => st.zones[id] && LV[st.zones[id].level]);
+  const set = ZONE_ORDER.filter(id => st.zones[id] && LV[st.zones[id].level]), G = getCat(st.breed);
   const nameS = 7*k, lvS = 7.8*k, tipS = 9.4*k, badgeD = pt(10.5*k), innerGap = I(0.035*k), blockGap = I(0.13*k);
-  const blocks = set.map(id => { const z = CAT.byId[id], zs = st.zones[id], L = LV[zs.level], side = z.side, inRow = side === 'T' || side === 'B';
+  const blocks = set.map(id => { const z = G.byId[id], zs = st.zones[id], L = LV[zs.level], side = z.side, inRow = side === 'T' || side === 'B';
     const indent = inRow ? 0 : badgeD + I(0.07), tw = (inRow ? rowW : colW) - indent;
     font(400, nameS, F.disp); const nameLines = wrap(z.name.toUpperCase(), inRow ? tw - badgeD - I(0.06) : tw);
     font(700, lvS, F.body); const lvLines = wrap(L.label, tw);
@@ -688,7 +787,7 @@ function layoutSheet(ctx, st, pp, dpi, k, dry, photo){
   const bandTop = y, mapY = bandTop + (topH ? topH + lead : 0);
   const bandH = Math.max(colH('L'), colH('R'), (mapY - bandTop) + mapH + (botH ? lead + botH : 0));
   const botY = mapY + mapH + lead;
-  if (!dry) renderCatMap(ctx, mapX, mapY, mapW, { levels:Object.fromEntries(set.map(id => [id, st.zones[id].level])), theme:SHEET_THEME, heatRes:1.1 });
+  if (!dry) renderCatMap(ctx, mapX, mapY, mapW, { levels:Object.fromEntries(set.map(id => [id, st.zones[id].level])), theme:SHEET_THEME, heatRes:1.1, cat:G });
   const toPx = (x, yy) => [mapX + (x - MAPB.x0)*mapW/MAPB.w, mapY + (yy - MAPB.y0)*mapW/MAPB.w];
   const dotAt = t => { ctx.fillStyle = '#fff'; ctx.strokeStyle = C.ink; ctx.lineWidth = pt(0.9); ctx.beginPath(); ctx.arc(t[0], t[1], I(0.03), 0, Math.PI*2); ctx.fill(); ctx.stroke(); };
   const leader = segs => { ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -971,7 +1070,7 @@ function renderPrint(){
       <div class="preview"><div class="paper"><img id="sheetimg" alt="Printable petting guide preview" width="935" height="1210"></div></div>
       <div class="actions">
         ${nSet < 14 ? `<p class="fallback">${14 - nSet} part${14 - nSet === 1 ? '' : 's'} of the body ${14 - nSet === 1 ? 'is' : 'are'} still unrated and show${14 - nSet === 1 ? 's' : ''} as grey stripes. <button class="linkbtn" data-act="go" data-v="zones">Rate ${14 - nSet === 1 ? 'it' : 'them'}</button></p>` : ''}
-        <div><span class="lab">Paper size</span>${seg('paper', { letter:'US Letter', a4:'A4' }, s.paper)}</div>
+        <div><span class="lab">Paper size</span>${seg('paper', { letter:'US Letter', a4:'A4' }, s.paper)}<div style="margin-top:10px"><button class="linkbtn look-link" data-act="looks" aria-haspopup="dialog">Change the cat's look, just for fun</button></div></div>
         <div id="saveactions"></div>
         <ul class="pts"><li>Open the PDF and print at 100% or "Actual size".</li><li>Stick it on the fridge or next to the food bowl for sitters and guests.</li><li>Your answers stay in this browser, so you can come back and edit.</li></ul>
       </div>
@@ -1028,8 +1127,10 @@ async function doSave(kind){
 /* ---------------- map drawing ---------------- */
 let mapGeom = null, mapRAF = 0;
 function drawMap(){ cancelAnimationFrame(mapRAF); mapRAF = requestAnimationFrame(drawMapNow); }
+function syncCat(){ CAT = getCat(S && S.breed); }
 function drawMapNow(){
   if (view !== 'zones' || !S) return;
+  syncCat();
   const cv = $('#map'), wrap = $('#mapwrap'); if (!cv || !wrap) return;
   const dpr = Math.min(3, window.devicePixelRatio || 1), aspect = MAPB.h / MAPB.w;
   let w = wrap.clientWidth; const narrow = window.innerWidth <= 860; const maxH = narrow ? Math.max(160, window.innerHeight*0.28) : window.innerHeight*0.5;
@@ -1048,9 +1149,40 @@ function drawMapNow(){
 }
 function mapPoint(e){ const cv = $('#map'), r = cv.getBoundingClientRect(); return [MAPB.x0 + (e.clientX - r.left)/r.width*MAPB.w, MAPB.y0 + (e.clientY - r.top)/r.height*MAPB.h]; }
 
+/* ---------------- cat looks (bonus) ---------------- */
+let looksAnchor = null; const thumbCache = new Map();
+function lookThumb(id){
+  const base = '#E6DED3', theme = { outline:cssVar('--ink'), base, hatch:base, seam:'rgba(0,0,0,0)', face:'#1B2030', dim:cssVar('--dim') };
+  const key = id + theme.outline;
+  if (thumbCache.has(key)) return thumbCache.get(key);
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.round(84*dpr), c = mk(w, Math.round(w*MAPB.h/MAPB.w));
+  renderCatMap(c.getContext('2d'), 0, 0, w, { levels:{}, theme, cat:getCat(id), heatRes:0.3, dpr });
+  const url = c.toDataURL('image/png'); if (thumbCache.size > 40) thumbCache.clear(); thumbCache.set(key, url); return url;
+}
+function renderLooks(){
+  const el = $('#looks'); if (!el || el.hidden) return;
+  el.innerHTML = `<p class="eyebrow">Just for fun</p><p>Dress up the drawing. Your ratings stay the same.</p>
+    <div class="looks-grid">${BREEDS.map(b => `<button class="look" data-act="breed" data-v="${b.id}" data-fk="look-${b.id}" aria-pressed="${(S.breed || 'classic') === b.id}"><img src="${lookThumb(b.id)}" alt="" width="84" height="${Math.round(84*MAPB.h/MAPB.w)}"><span>${b.name}</span></button>`).join('')}</div>`;
+}
+function placeLooks(){
+  const el = $('#looks'); if (!el || el.hidden || !looksAnchor) return;
+  const r = looksAnchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+  const card = looksAnchor.closest('.map-card'), below = card ? card.getBoundingClientRect().bottom + 8 : r.bottom + 8;
+  let left = Math.min(vw - w - 12, Math.max(12, r.right - w)), top = below;
+  if (top + h > vh - 8) top = r.top - h - 8;
+  el.style.left = left + 'px'; el.style.top = Math.max(12, top) + 'px';
+}
+function openLooks(anchor){ ensureState(); looksAnchor = anchor; const el = $('#looks'); el.hidden = false; renderLooks(); placeLooks(); const cur = el.querySelector('[aria-pressed="true"]'); if (cur) cur.focus({ preventScroll:true }); }
+function closeLooks(){ const el = $('#looks'); if (el && !el.hidden){ el.hidden = true; if (looksAnchor && document.contains(looksAnchor)) looksAnchor.focus({ preventScroll:true }); } looksAnchor = null; }
+document.addEventListener('pointerdown', e => { const el = $('#looks'); if (!el || el.hidden) return; if (el.contains(e.target) || e.target.closest('[data-act="looks"]')) return; closeLooks(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLooks(); });
+window.addEventListener('scroll', () => placeLooks(), { passive:true });
+window.addEventListener('resize', () => placeLooks());
+
 /* ---------------- navigation ---------------- */
 function go(v){
   if (v !== 'home') ensureState();
+  closeLooks(); syncCat();
   view = v; confirmNew = false;
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== 'v-' + v);
   if (v === 'home') renderHome();
@@ -1116,6 +1248,8 @@ document.addEventListener('click', e => {
     case 'savepdf': doSave('pdf'); break;
     case 'savepng': doSave('png'); break;
     case 'print': doPrint(); break;
+    case 'looks': { const el = $('#looks'); if (el.hidden) openLooks(b); else closeLooks(); break; }
+    case 'breed': S.breed = v; syncCat(); setDirty(); rerender(renderLooks); if (view === 'zones') drawMap(); if (view === 'print') updatePreview(); break;
   }
 });
 function scrollCtl(){ if (window.innerWidth <= 860){ const c = $('.zcard'); if (c){ const top = c.getBoundingClientRect().top; const mapH = ($('.map-col') || {}).offsetHeight || 0; if (top < mapH + 70) window.scrollBy({ top: top - mapH - 80, behavior:'smooth' }); } } }

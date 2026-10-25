@@ -527,7 +527,7 @@ function buildCat(B){
     const across = (t, len) => { const [p, a, r] = tailAt(t), nx = -Math.sin(a), ny = Math.cos(a), L = (len || 1.5)*r; ctx.beginPath(); ctx.moveTo(p[0] - nx*L, p[1] - ny*L); ctx.lineTo(p[0] + nx*L, p[1] + ny*L); ctx.stroke(); };
     const legBand = (y, wid) => { [[207,214],[257,256],[480,494],[444,452]].forEach(([x, x2]) => { const cx = x + (x2 - x)*(y - 300)/80; ctx.beginPath(); ctx.moveTo(cx - wid, y); ctx.quadraticCurveTo(cx, y + 3, cx + wid, y); ctx.stroke(); }); };
     ctx.globalAlpha = 0.72; ctx.lineWidth = 1.8;
-    const dotted = on => { if (on){ ctx.setLineDash([0.01, 4.6]); ctx.lineWidth = 2.3; } else { ctx.setLineDash([]); ctx.lineWidth = 1.8; } };
+    const dotted = on => { if (on){ ctx.setLineDash([0.01, 8]); ctx.lineWidth = 2; ctx.globalAlpha = 0.45; } else { ctx.setLineDash([]); ctx.lineWidth = 1.8; ctx.globalAlpha = 0.72; } };
     if (coat === 'tabby'){
       [246,282,318,354,390,426].forEach((x, i) => { ctx.beginPath(); ctx.moveTo(x, 170); ctx.quadraticCurveTo(x + 14, 204, x - 4, i % 2 ? 226 : 238); ctx.stroke(); });
       ctx.beginPath(); ctx.ellipse(470,246,30,36,-0.35,2.3,4.2); ctx.stroke();

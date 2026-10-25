@@ -1076,7 +1076,7 @@ function renderHome(){
         ${has ? `<button class="btn primary" data-act="continue">Continue ${esc(possessive(nm))} guide</button>`
               : `<button class="btn primary" data-act="new">Start my cat's guide</button><button class="btn ghost" data-act="loadexample">Edit the example</button>`}
       </div>
-      ${has && !confirmNew ? `<p class="notme">${S.name.trim() ? `Not ${esc(S.name.trim())}? ` : ''}<button class="linkbtn" data-act="new">${S.isExample ? 'Start your own guide' : 'Start a new guide'}</button></p>` : ''}
+      ${has && !confirmNew ? `<p class="notme">Different cat? <button class="linkbtn" data-act="new">${S.isExample ? 'Start your own guide' : 'Start a new guide'}</button></p>` : ''}
       ${confirmNew ? `<div class="confirm" role="alert"><span>This replaces ${esc(possessive(nm))} guide.</span><button class="btn sm primary" data-act="newconfirm">Start over</button><button class="btn sm ghost" data-act="newcancel">Keep it</button></div>` : ''}
     </div>
     <ol class="how"><li>Tell us about your cat</li><li>Rate 15 parts of the body, from nose to tail</li><li>Add mood signs, warnings and notes</li><li>Save it as a PDF and print it</li></ol>

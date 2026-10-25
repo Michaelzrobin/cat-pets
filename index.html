@@ -511,50 +511,65 @@ function buildCat(B){
   function drawMarkings(ctx, ink, coat){
     const brown = '#3a2a20';
     const tailAt = t => { const p = bezPt(TAIL[0], TAIL[1], TAIL[2], TAIL[3], t), q = bezPt(TAIL[0], TAIL[1], TAIL[2], TAIL[3], Math.min(1, t + 0.01)); const a = Math.atan2(q[1]-p[1], q[0]-p[0]); return [p, a, tl[0] + (tl[1]-tl[0])*t]; };
-    ctx.save(); ctx.clip(silhouette); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalCompositeOperation = 'multiply';
+    /* coats are ink line-work only, so the heat colors underneath never change */
+    ctx.save(); ctx.clip(silhouette); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = ink; ctx.fillStyle = ink;
+    let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+    const inside = (x, y) => hitCtx.isPointInPath(silhouette, x, y);
+    const ell = (x, y, rx, ry, rot) => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot || 0, 0, Math.PI*2); ctx.stroke(); };
+    const ticks = (x, y, rx, ry, n, len, dir, from, to) => { // short fur ticks along an ellipse; dir 1 = outward, -1 = inward
+      from = from || 0; to = to == null ? Math.PI*2 : to; ctx.beginPath();
+      for (let i = 0; i < n; i++){ const a = from + (to - from)*(i + 0.5)/n, px = x + Math.cos(a)*rx, py = y + Math.sin(a)*ry; ctx.moveTo(px, py); ctx.lineTo(px + Math.cos(a)*len*dir, py + Math.sin(a)*len*dir); }
+      ctx.stroke(); };
+    const blob = (x, y, r, k) => { // irregular closed outline
+      const n = 9, pts = []; for (let i = 0; i < n; i++){ const a = i/n*Math.PI*2, rr = r*(0.72 + rnd()*0.5); pts.push([x + Math.cos(a)*rr*(k || 1), y + Math.sin(a)*rr]); }
+      ctx.beginPath(); const m0 = [(pts[n-1][0] + pts[0][0])/2, (pts[n-1][1] + pts[0][1])/2]; ctx.moveTo(m0[0], m0[1]);
+      for (let i = 0; i < n; i++){ const p = pts[i], q = pts[(i+1)%n]; ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0])/2, (p[1] + q[1])/2); } ctx.closePath(); ctx.stroke(); };
+    const across = (t, len) => { const [p, a, r] = tailAt(t), nx = -Math.sin(a), ny = Math.cos(a), L = (len || 1.5)*r; ctx.beginPath(); ctx.moveTo(p[0] - nx*L, p[1] - ny*L); ctx.lineTo(p[0] + nx*L, p[1] + ny*L); ctx.stroke(); };
+    const legBand = (y, wid) => { [[207,214],[257,256],[480,494],[444,452]].forEach(([x, x2]) => { const cx = x + (x2 - x)*(y - 300)/80; ctx.beginPath(); ctx.moveTo(cx - wid, y); ctx.quadraticCurveTo(cx, y + 3, cx + wid, y); ctx.stroke(); }); };
+    ctx.globalAlpha = 0.72; ctx.lineWidth = 1.8;
     if (coat === 'tabby'){
-      ctx.globalAlpha = 0.34; ctx.strokeStyle = brown; ctx.lineWidth = 6;
-      [246,282,318,354,390,426].forEach((x, i) => { ctx.beginPath(); ctx.moveTo(x, 168); ctx.quadraticCurveTo(x + 14, 204, x - 4, i % 2 ? 230 : 244); ctx.stroke(); });
-      ctx.beginPath(); ctx.ellipse(470,246,30,36,-0.35,2.3,4.2); ctx.stroke(); ctx.beginPath(); ctx.ellipse(470,246,16,20,-0.35,2.3,4.2); ctx.stroke();
-      ctx.lineWidth = 5; [326,346,364].forEach(y => { ctx.beginPath(); ctx.moveTo(176,y); ctx.lineTo(290,y+2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(404,y+4); ctx.lineTo(540,y+6); ctx.stroke(); });
-      [0.22,0.38,0.53,0.67,0.8,0.92].forEach(t => { const [p, a, r] = tailAt(t), nx = -Math.sin(a), ny = Math.cos(a); ctx.beginPath(); ctx.moveTo(p[0] - nx*r*1.6, p[1] - ny*r*1.6); ctx.lineTo(p[0] + nx*r*1.6, p[1] + ny*r*1.6); ctx.stroke(); });
-      ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(112,124); ctx.lineTo(118,104); ctx.lineTo(130,118); ctx.lineTo(142,104); ctx.lineTo(148,124); ctx.stroke();
-      [-1,1].forEach(sg => { [0,8].forEach(d => { ctx.beginPath(); ctx.moveTo(130 + sg*58, 160 + d); ctx.lineTo(130 + sg*76, 156 + d*1.3); ctx.stroke(); }); });
+      [246,282,318,354,390,426].forEach((x, i) => { ctx.beginPath(); ctx.moveTo(x, 170); ctx.quadraticCurveTo(x + 14, 204, x - 4, i % 2 ? 226 : 238); ctx.stroke(); });
+      ctx.beginPath(); ctx.ellipse(470,246,30,36,-0.35,2.3,4.2); ctx.stroke();
+      [322,340,358].forEach(y => legBand(y, 18));
+      [0.25,0.42,0.58,0.73,0.86].forEach(t => across(t));
+      ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(114,124); ctx.lineTo(119,106); ctx.lineTo(130,118); ctx.lineTo(141,106); ctx.lineTo(146,124); ctx.stroke();
+      [-1,1].forEach(sg => { [0,8].forEach(d => { ctx.beginPath(); ctx.moveTo(130 + sg*(head[0] - 12), 158 + d); ctx.lineTo(130 + sg*(head[0] + 4), 154 + d*1.3); ctx.stroke(); }); });
     } else if (coat === 'spots'){
-      let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
-      ctx.globalAlpha = 0.4; ctx.strokeStyle = brown; ctx.fillStyle = brown; ctx.lineWidth = 3; const placed = [];
-      for (let i = 0; i < 900 && placed.length < 46; i++){
+      ctx.lineWidth = 1.5; const placed = [];
+      for (let i = 0; i < 1200 && placed.length < 44; i++){
         const x = 160 + rnd()*400, y = 172 + rnd()*222, r = 5 + rnd()*3;
-        if (!hitCtx.isPointInPath(silhouette, x, y) || hitCtx.isPointInPath(headP, x, y) || hitCtx.isPointInPath(jowls, x, y)) continue;
-        if (placed.some(q => Math.hypot(q[0] - x, q[1] - y) < 21)) continue;
+        if (!inside(x, y) || hitCtx.isPointInPath(headP, x, y) || hitCtx.isPointInPath(jowls, x, y)) continue;
+        if (placed.some(q => Math.hypot(q[0] - x, q[1] - y) < 22)) continue;
         placed.push([x, y]); const a = rnd()*Math.PI*2;
         for (let k = 0; k < 3; k++){ ctx.beginPath(); ctx.arc(x, y, r, a + k*2.1, a + k*2.1 + 1.45); ctx.stroke(); }
       }
-      for (let i = 0; i < 9; i++){ const x = 108 + rnd()*44, y = 102 + rnd()*26; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI*2); ctx.fill(); }
+      for (let i = 0; i < 8; i++){ const x = 110 + rnd()*40, y = 104 + rnd()*24; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI*2); ctx.fill(); }
     } else if (coat === 'points'){
-      const pc = 'rgba(75,50,39,';
-      ctx.save(); ctx.translate(130, 168); ctx.scale(1.3, 1); const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 52); g.addColorStop(0, pc + '0.34)'); g.addColorStop(0.55, pc + '0.22)'); g.addColorStop(1, pc + '0)'); ctx.fillStyle = g; ctx.fillRect(-60, -60, 120, 120); ctx.restore();
-      ctx.fillStyle = pc + '0.46)'; ctx.fill(earL); ctx.fill(earR);
-      const lg = ctx.createLinearGradient(0, 300, 0, 396); lg.addColorStop(0, pc + '0)'); lg.addColorStop(1, pc + '0.5)'); ctx.fillStyle = lg;
-      [farHind, farHindPaw, farFront, farFrontPaw, nearHind, nearHindPaw, nearFront, nearFrontPaw].forEach(p => ctx.fill(p));
-      const tg = ctx.createLinearGradient(520, 210, 560, 50); tg.addColorStop(0, pc + '0)'); tg.addColorStop(1, pc + '0.55)'); ctx.fillStyle = tg; ctx.fill(tail);
+      const mx = 130, my = 166, mrx = Math.min(54, head[0] - 10), mry = 38;
+      ell(mx, my, mrx, mry);
+      [earL, earR].forEach(e => { ctx.save(); ctx.clip(e); ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = -80; k < 260; k += 7){ ctx.moveTo(k, 20); ctx.lineTo(k + 60, 130); } ctx.stroke(); ctx.restore(); });
+      legBand(334, 20); ctx.lineWidth = 1.2; [[207,214],[257,256],[480,494],[444,452]].forEach(([x, x2]) => { const cx = x + (x2 - x)*0.42; for (let k = -12; k <= 12; k += 6){ ctx.beginPath(); ctx.moveTo(cx + k, 338); ctx.lineTo(cx + k, 344); ctx.stroke(); } });
+      ctx.lineWidth = 1.8; across(0.55); ctx.lineWidth = 1.2; [0.6,0.66,0.72].forEach(t => across(t, 0.6));
     } else if (coat === 'tuxedo'){
-      const dark = new Path2D(); dark.rect(0, -20, 660, 460);
-      [[130,192,30,18],[188,262,30,40],[199,384,26,15],[251,381,23,13],[478,383,25,15],[428,381,23,13]].forEach(([x,y,rx,ry]) => { dark.moveTo(x + rx, y); dark.ellipse(x, y, rx, ry, 0, 0, Math.PI*2, true); dark.closePath(); });
-      ctx.globalAlpha = 0.42; ctx.fillStyle = '#25252b'; ctx.fill(dark, 'nonzero');
-    } else if (coat === 'calico' || coat === 'tortie'){
-      let seed = coat === 'calico' ? 11 : 29; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
-      const blob = (x, y, r) => { ctx.beginPath(); for (let k = 0; k < 5; k++){ const a = rnd()*Math.PI*2, d = r*0.5*rnd(), cx = x + Math.cos(a)*d, cy = y + Math.sin(a)*d, rr = r*(0.5 + rnd()*0.4); ctx.moveTo(cx + rr, cy); ctx.arc(cx, cy, rr, 0, Math.PI*2); } ctx.fill(); };
-      const dark = () => { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#2a2420'; }, light = () => { ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = '#ffffff'; };
-      if (coat === 'calico'){
-        light(); ctx.globalAlpha = 0.34; [[190,262,40],[300,292,30],[370,294,28],[199,384,24],[251,381,20],[130,196,26],[478,382,22]].forEach(([x,y,r]) => blob(x, y, r));
-        dark(); ctx.globalAlpha = 0.42; [[300,192,34],[96,118,24],[540,150,20],[470,236,30],[392,200,22]].forEach(([x,y,r]) => blob(x, y, r));
-        ctx.globalAlpha = 0.26; [[352,214,26],[166,140,18],[575,80,16],[240,300,18]].forEach(([x,y,r]) => blob(x, y, r));
-      } else {
-        for (let i = 0; i < 120; i++){ const x = 50 + rnd()*560, y = 40 + rnd()*360; if (!hitCtx.isPointInPath(silhouette, x, y)) continue;
-          if (i % 3 === 0){ light(); ctx.globalAlpha = 0.2; } else { dark(); ctx.globalAlpha = 0.3; } blob(x, y, 7 + rnd()*7); }
+      ell(130, 196, 30, 16); ell(188, 262, 30, 40);
+      legBand(358, 20);
+      ctx.lineWidth = 1.2; ticks(188, 262, 30, 40, 18, 5, 1); ticks(130, 196, 30, 16, 12, 4, 1, Math.PI*1.05, Math.PI*1.95);
+      [[207,214],[257,256],[480,494],[444,452]].forEach(([x, x2]) => { const cx = x + (x2 - x)*0.72; for (let k = -12; k <= 12; k += 6){ ctx.beginPath(); ctx.moveTo(cx + k, 356); ctx.lineTo(cx + k, 350); ctx.stroke(); } });
+    } else if (coat === 'calico'){
+      ctx.lineWidth = 1.7; seed = 11;
+      [[300,196,34,1.4],[470,238,30,1.1],[540,150,18,1],[96,120,22,1],[170,140,16,1],[392,282,22,1.3],[214,330,14,0.8]].forEach(([x, y, r, k]) => blob(x, y, r, k));
+      ctx.lineWidth = 1; ctx.globalAlpha = 0.45; [[300,196,34,1.4],[470,238,30,1.1],[96,120,22,1]].forEach(([x, y, r, k]) => { ctx.save(); ctx.beginPath(); ctx.ellipse(x, y, r*k*0.85, r*0.85, 0, 0, Math.PI*2); ctx.clip(); ctx.beginPath(); for (let d = -60; d < 60; d += 6){ ctx.moveTo(x + d - 30, y - 40); ctx.lineTo(x + d + 10, y + 40); } ctx.stroke(); ctx.restore(); });
+    } else if (coat === 'tortie'){
+      ctx.lineWidth = 1.5; seed = 29;
+      for (let i = 0; i < 340; i++){
+        const x = 60 + rnd()*560, y = 50 + rnd()*350; if (!inside(x, y)) continue;
+        if (i % 3 === 0) continue;
+        const a = rnd()*Math.PI*2, L = 6 + rnd()*7, c1 = a + (rnd() - 0.5)*1.6;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.cos(c1)*L*0.6, y + Math.sin(c1)*L*0.6, x + Math.cos(a)*L, y + Math.sin(a)*L); ctx.stroke();
       }
     }
+    ctx.restore();
+    ctx.save(); ctx.clip(silhouette); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.strokeStyle = ink;
     const ruffLines = alpha => { ctx.globalAlpha = alpha; ctx.lineWidth = 1.3;
       for (let i = 0; i < 9; i++){ const a = Math.PI*(0.18 + i*0.08), x = 130 + Math.cos(a)*(head[2] - 6), y = 176 + Math.sin(a)*(head[3] + 2); ctx.beginPath(); ctx.moveTo(x - 4, y - 7); ctx.lineTo(x, y); ctx.lineTo(x + 4, y - 7); ctx.stroke(); }

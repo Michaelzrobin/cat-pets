@@ -131,27 +131,16 @@ figcaption{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
 .map-col{position:sticky;top:calc(env(safe-area-inset-top,0px) + 74px)}
 .map-card{padding:14px 14px 12px}
 .map-wrap{display:flex;justify-content:center;position:relative}
-.look-btn{position:absolute;right:0;bottom:0;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--muted);display:grid;place-items:center;padding:0;opacity:.85}
-.look-btn:hover{color:var(--ink);opacity:1;border-color:var(--ink)}
-.look-btn svg{width:18px;height:18px}
-.looks{position:fixed;z-index:30;width:min(348px,calc(100vw - 24px));background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px -16px rgba(10,14,25,.45);padding:14px 14px 12px}
-.looks .eyebrow{margin:0 0 2px}
-.looks p{margin:0 0 10px;font-size:13.5px;color:var(--muted)}
-.looks-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
-.looks-grid.coats{grid-template-columns:repeat(5,minmax(0,1fr))}
-.looks-sec + .looks-sec{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
-.looks-sec .lab{margin-bottom:4px}
-.looks-inline{margin:18px auto 0;max-width:620px;padding:16px}
-.looks-inline .looks-grid{grid-template-columns:repeat(auto-fill,minmax(72px,1fr))}
-.looks-inline .looks-grid.coats{grid-template-columns:repeat(auto-fill,minmax(58px,1fr))}
-.looks-inline-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.looks-inline-head h3{margin:0;font-size:16px}
-.looks-inline-head span{color:var(--muted);font-size:13.5px}
-.look{display:grid;gap:2px;justify-items:center;border:1.5px solid transparent;background:none;border-radius:10px;padding:4px 2px 5px;font-size:11.5px;line-height:1.2;color:var(--muted);text-align:center}
-.look img{width:100%;height:auto;display:block;border-radius:6px}
+.lookbar{display:grid;gap:6px;max-width:620px;margin:0 auto 14px}
+.lookrow{display:flex;align-items:center;gap:8px;min-width:0}
+.lookrow .lab{margin:0;width:46px;flex:none}
+.strip{position:relative;display:flex;gap:2px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none;padding:2px;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.strip::-webkit-scrollbar{display:none}
+.look{flex:none;width:76px;display:grid;gap:1px;justify-items:center;align-content:start;border:1.5px solid transparent;background:none;border-radius:10px;padding:3px 2px 4px;font-size:11.5px;line-height:1.15;color:var(--muted);text-align:center}
+.look img{width:64px;height:auto;display:block}
 .look:hover{background:var(--wash);color:var(--ink)}
-.look[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);font-weight:700}
-.look-link{display:inline-flex;align-items:center;gap:6px}
+.look[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);font-weight:700;background:var(--card)}
+.strip .look:last-child{margin-right:24px}
 #map{display:block;touch-action:manipulation;cursor:pointer;max-width:100%}
 .mini-legend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:10px;font-size:13px;color:var(--muted)}
 .mini-legend span{display:inline-flex;align-items:center;gap:6px}
@@ -253,7 +242,7 @@ figcaption{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
     <div class="zones-grid">
       <div class="map-col">
         <div class="card map-card">
-          <div class="map-wrap" id="mapwrap"><canvas id="map" role="img" aria-label="Cat body map"></canvas><button class="look-btn" data-act="looks" aria-haspopup="dialog" aria-label="Change how the cat looks" title="Change how the cat looks"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4.6 19.4v-8.2L3.8 4.6l4 2.5a8.4 8.4 0 0 1 6.4 0l4-2.5-.8 6.6v8.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.6 12.6q.9-.8 1.8 0M11.6 12.6q.9-.8 1.8 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M18.6 13.2l.55 1.25 1.25.55-1.25.55-.55 1.25-.55-1.25-1.25-.55 1.25-.55z" fill="currentColor"/></svg></button></div>
+          <div class="map-wrap" id="mapwrap"><canvas id="map" role="img" aria-label="Cat body map"></canvas></div>
           <div class="mini-legend" id="minilegend"></div>
           <div class="zstrip" id="zstrip" role="list" aria-label="Body parts"></div>
           <p class="map-help">Tap any part of the cat to jump to it.</p>
@@ -267,7 +256,6 @@ figcaption{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
   <section class="view" id="v-print" hidden></section>
 </main>
 
-<div class="looks" id="looks" role="dialog" aria-label="Cat looks" hidden></div>
 <div id="printwrap" aria-hidden="true"><img id="printimg" alt=""></div>
 <style id="pagesize">@page{size:letter;margin:0}</style>
 <nav class="bottombar" id="bottombar" hidden>
@@ -388,7 +376,7 @@ function example(){
 /* ---------------- state ---------------- */
 const KEY = 'cat-petting-guide:v1';
 let S = null, view = 'home', zi = 0, confirmNew = false, hoverZone = null, moreTips = false;
-function load(){ try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && o.v === 1){ const st = Object.assign(blank(), o); if (st.breed === 'tabby'){ st.breed = 'classic'; st.coat = 'tabby'; } if (!BREED[st.breed]) st.breed = 'classic'; if (!COAT[st.coat]) st.coat = BREED[st.breed].coat || 'solid'; if (st.zones.forehead && !st.zones.tophead){ st.zones.tophead = st.zones.forehead; } delete st.zones.forehead; for (const k in st.zones){ const zl = st.zones[k]; if (zl && OLD_LEVELS[zl.level]) zl.level = OLD_LEVELS[zl.level]; } return st; } } } catch(e){} return null; }
+function load(){ try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); if (o && o.v === 1){ const st = Object.assign(blank(), o); if (st.breed === 'tabby'){ st.breed = 'classic'; st.coat = 'tabby'; } if (st.breed === 'bengal'){ st.breed = 'classic'; if (!COAT[st.coat] || st.coat === 'solid') st.coat = 'spots'; } if (!BREED[st.breed]) st.breed = 'classic'; if (!COAT[st.coat]) st.coat = BREED[st.breed].coat || 'solid'; if (st.zones.forehead && !st.zones.tophead){ st.zones.tophead = st.zones.forehead; } delete st.zones.forehead; for (const k in st.zones){ const zl = st.zones[k]; if (zl && OLD_LEVELS[zl.level]) zl.level = OLD_LEVELS[zl.level]; } return st; } } } catch(e){} return null; }
 let saveT = 0;
 function save(){ clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){ try { localStorage.setItem(KEY, JSON.stringify(Object.assign({}, S, {photo:null}))); } catch(e2){} } }, 250); }
 const P = () => PRON[(S && S.pronoun) || 'she'];
@@ -400,20 +388,22 @@ function tipText(t, st){ return t.k ? fmt(TIPS[t.k] || '', st) : t.t; }
 
 /* ---------------- cat geometry (design units) ---------------- */
 const BREEDS = [
-  { id:'classic',   name:'Classic' },
+  { id:'classic',   name:'Domestic Shorthair' },
+  { id:'longhair',  name:'Domestic Longhair', ruff:6, tail:[17,14,0.3], marks:'fluff' },
   { id:'siamese',   name:'Siamese',       ears:'big',    head:[64,58,70,42], tail:[11,7,0],     legs:0.9,  coat:'points' },
   { id:'mainecoon', name:'Maine Coon',    ears:'tufted', ruff:7,             tail:[18,13,0.3],  legs:1.06, marks:'coon', coat:'tabby' },
   { id:'persian',   name:'Persian',       ears:'small',  head:[72,62,80,46], ruff:6, tail:[18,15,0.32], marks:'fluff', noseDy:-4 },
+  { id:'ragdoll',   name:'Ragdoll',       ears:'rounded', head:[70,60,82,46], ruff:6, tail:[18,14,0.28], legs:1.06, marks:'fluff', coat:'points' },
+  { id:'british',   name:'British Shorthair', ears:'brit', head:[74,62,86,48], tail:[16,13,0],    legs:1.12 },
   { id:'fold',      name:'Scottish Fold', ears:'fold',   head:[70,60,80,44], marks:'fold' },
   { id:'sphynx',    name:'Sphynx',        ears:'huge',   head:[64,58,72,42], tail:[10,5,0],     legs:0.85, marks:'wrinkles', whisk:0.45 },
-  { id:'bengal',    name:'Bengal',        ears:'rounded', tail:[15,11,0],    legs:1.04, coat:'spots' },
 ];
-const COATS = [ { id:'solid', name:'Solid' }, { id:'tabby', name:'Tabby' }, { id:'spots', name:'Spotted' }, { id:'points', name:'Color points' }, { id:'tuxedo', name:'Tuxedo' } ];
+const COATS = [ { id:'solid', name:'Solid' }, { id:'tabby', name:'Tabby' }, { id:'spots', name:'Bengal spots' }, { id:'points', name:'Color points' }, { id:'tuxedo', name:'Tuxedo' }, { id:'calico', name:'Calico' }, { id:'tortie', name:'Tortoiseshell' } ];
 const COAT = Object.fromEntries(COATS.map(c => [c.id, c]));
 const BREED = Object.fromEntries(BREEDS.map(b => [b.id, b]));
 const EARS = {
   classic:[[64,126],[68,46],[118,96]], tufted:[[62,126],[64,40],[118,96]], big:[[60,128],[56,30],[122,96]],
-  huge:[[54,128],[44,18],[126,92]], small:[[72,116],[78,72],[110,98]], rounded:[[66,122],[72,56],[116,98]],
+  huge:[[54,128],[44,18],[126,92]], small:[[72,116],[78,72],[110,98]], rounded:[[66,122],[72,56],[116,98]], brit:[[70,118],[76,66],[114,98]],
 };
 const catCache = new Map();
 function getCat(id){ id = BREED[id] ? id : 'classic'; if (!catCache.has(id)) catCache.set(id, buildCat(BREED[id])); return catCache.get(id); }
@@ -552,6 +542,18 @@ function buildCat(B){
       const dark = new Path2D(); dark.rect(0, -20, 660, 460);
       [[130,192,30,18],[188,262,30,40],[199,384,26,15],[251,381,23,13],[478,383,25,15],[428,381,23,13]].forEach(([x,y,rx,ry]) => { dark.moveTo(x + rx, y); dark.ellipse(x, y, rx, ry, 0, 0, Math.PI*2, true); dark.closePath(); });
       ctx.globalAlpha = 0.42; ctx.fillStyle = '#25252b'; ctx.fill(dark, 'nonzero');
+    } else if (coat === 'calico' || coat === 'tortie'){
+      let seed = coat === 'calico' ? 11 : 29; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+      const blob = (x, y, r) => { ctx.beginPath(); for (let k = 0; k < 5; k++){ const a = rnd()*Math.PI*2, d = r*0.5*rnd(), cx = x + Math.cos(a)*d, cy = y + Math.sin(a)*d, rr = r*(0.5 + rnd()*0.4); ctx.moveTo(cx + rr, cy); ctx.arc(cx, cy, rr, 0, Math.PI*2); } ctx.fill(); };
+      const dark = () => { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#2a2420'; }, light = () => { ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = '#ffffff'; };
+      if (coat === 'calico'){
+        light(); ctx.globalAlpha = 0.34; [[190,262,40],[300,292,30],[370,294,28],[199,384,24],[251,381,20],[130,196,26],[478,382,22]].forEach(([x,y,r]) => blob(x, y, r));
+        dark(); ctx.globalAlpha = 0.42; [[300,192,34],[96,118,24],[540,150,20],[470,236,30],[392,200,22]].forEach(([x,y,r]) => blob(x, y, r));
+        ctx.globalAlpha = 0.26; [[352,214,26],[166,140,18],[575,80,16],[240,300,18]].forEach(([x,y,r]) => blob(x, y, r));
+      } else {
+        for (let i = 0; i < 120; i++){ const x = 50 + rnd()*560, y = 40 + rnd()*360; if (!hitCtx.isPointInPath(silhouette, x, y)) continue;
+          if (i % 3 === 0){ light(); ctx.globalAlpha = 0.2; } else { dark(); ctx.globalAlpha = 0.3; } blob(x, y, 7 + rnd()*7); }
+      }
     }
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.strokeStyle = ink;
     const ruffLines = alpha => { ctx.globalAlpha = alpha; ctx.lineWidth = 1.3;
@@ -1076,7 +1078,7 @@ function renderPrint(){
   $('#v-print').innerHTML = `
     <div class="step-head"><p class="eyebrow">Step 5 of 5</p><h1>${esc(n === 'your cat' ? 'Your' : possessive(n))} guide is ready to print</h1><p class="lede">Check it over, then save it. It fits on one page.</p></div>
     <div class="print-grid">
-      <div class="preview"><div class="paper"><img id="sheetimg" alt="Printable petting guide preview" width="935" height="1210"></div><div class="card looks-inline" id="looks-inline"></div></div>
+      <div class="preview"><div class="lookbar" id="lookbar"></div><div class="paper"><img id="sheetimg" alt="Printable petting guide preview" width="935" height="1210"></div></div>
       <div class="actions">
         ${nLeft ? `<p class="fallback">${nLeft} part${nLeft === 1 ? '' : 's'} of the body ${nLeft === 1 ? 'is' : 'are'} still unrated and show${nLeft === 1 ? 's' : ''} as grey stripes. <button class="linkbtn" data-act="go" data-v="zones">Rate ${nLeft === 1 ? 'it' : 'them'}</button></p>` : ''}
         <div><span class="lab">Paper size</span>${seg('paper', { letter:'US Letter', a4:'A4' }, s.paper)}</div>
@@ -1084,7 +1086,7 @@ function renderPrint(){
         <ul class="pts"><li>Open the PDF and print at 100% or "Actual size".</li><li>Stick it on the fridge or next to the food bowl for sitters and guests.</li><li>Your answers stay in this browser, so you can come back and edit.</li></ul>
       </div>
     </div>`;
-  renderPrintActions(); renderLooksInline(); updatePreview();
+  renderPrintActions(); renderLookbar(); updatePreview();
 }
 function renderPrintActions(){
   const el = $('#saveactions'); if (!el) return;
@@ -1159,49 +1161,29 @@ function drawMapNow(){
 function mapPoint(e){ const cv = $('#map'), r = cv.getBoundingClientRect(); return [MAPB.x0 + (e.clientX - r.left)/r.width*MAPB.w, MAPB.y0 + (e.clientY - r.top)/r.height*MAPB.h]; }
 
 /* ---------------- cat looks (bonus) ---------------- */
-let looksAnchor = null; const thumbCache = new Map();
+const thumbCache = new Map();
 function lookThumb(breed, coat){
   const base = '#E6DED3', theme = { outline:cssVar('--ink'), base, hatch:base, seam:'rgba(0,0,0,0)', face:'#1B2030', dim:cssVar('--dim') };
   const key = breed + '|' + coat + '|' + theme.outline;
   if (thumbCache.has(key)) return thumbCache.get(key);
-  const dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.round(84*dpr), c = mk(w, Math.round(w*MAPB.h/MAPB.w));
-  renderCatMap(c.getContext('2d'), 0, 0, w, { levels:{}, theme, cat:getCat(breed), coat, heatRes:0.3, dpr });
-  const url = c.toDataURL('image/png'); if (thumbCache.size > 80) thumbCache.clear(); thumbCache.set(key, url); return url;
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.round(64*dpr), c = mk(w, Math.round(w*MAPB.h/MAPB.w));
+  renderCatMap(c.getContext('2d'), 0, 0, w, { levels:{}, theme, cat:getCat(breed), coat, heatRes:0.25, dpr });
+  const url = c.toDataURL('image/png'); if (thumbCache.size > 120) thumbCache.clear(); thumbCache.set(key, url); return url;
 }
-function looksHTML(){
-  const br = S.breed || 'classic', co = S.coat || 'solid', th = Math.round(84*MAPB.h/MAPB.w);
-  const btn = (act, id, name, img, on) => `<button class="look" data-act="${act}" data-v="${id}" data-fk="${act}-${id}" aria-pressed="${on}"><img src="${img}" alt="" width="84" height="${th}"><span>${name}</span></button>`;
-  return `<div class="looks-sec"><span class="lab">Breed</span><div class="looks-grid">${BREEDS.map(b => btn('breed', b.id, b.name, lookThumb(b.id, co), br === b.id)).join('')}</div></div>
-    <div class="looks-sec"><span class="lab">Coat</span><div class="looks-grid coats">${COATS.map(c => btn('coat', c.id, c.name, lookThumb(br, c.id), co === c.id)).join('')}</div></div>`;
+function renderLookbar(){
+  const el = $('#lookbar'); if (!el || !S) return;
+  const br = S.breed || 'classic', co = S.coat || 'solid', th = Math.round(64*MAPB.h/MAPB.w);
+  const keep = [...el.querySelectorAll('.strip')].map(x => x.scrollLeft);
+  const btn = (act, id, name, img, on) => `<button class="look" data-act="${act}" data-v="${id}" data-fk="${act}-${id}" aria-pressed="${on}"><img src="${img}" alt="" width="64" height="${th}"><span>${name}</span></button>`;
+  el.innerHTML = `<div class="lookrow"><span class="lab" id="lab-breed">Breed</span><div class="strip" role="group" aria-labelledby="lab-breed">${BREEDS.map(b => btn('breed', b.id, b.name, lookThumb(b.id, co), br === b.id)).join('')}</div></div>
+    <div class="lookrow"><span class="lab" id="lab-coat">Coat</span><div class="strip" role="group" aria-labelledby="lab-coat">${COATS.map(c => btn('coat', c.id, c.name, lookThumb(br, c.id), co === c.id)).join('')}</div></div>`;
+  el.querySelectorAll('.strip').forEach((st, i) => { if (keep[i] != null) st.scrollLeft = keep[i]; const on = st.querySelector('[aria-pressed="true"]'); if (on && (on.offsetLeft < st.scrollLeft || on.offsetLeft + on.offsetWidth > st.scrollLeft + st.clientWidth - 20)) st.scrollLeft = on.offsetLeft - 8; });
 }
-function renderLooks(){
-  const el = $('#looks'); if (!el || el.hidden) return;
-  el.innerHTML = `<p class="eyebrow">Just for fun</p><p>Dress up the drawing. Your ratings stay the same.</p>${looksHTML()}`;
-}
-function renderLooksInline(){
-  const el = $('#looks-inline'); if (!el) return;
-  el.innerHTML = `<div class="looks-inline-head"><h3>The cat's look</h3><span>Just for fun. Pick a breed and a coat for the drawing.</span></div>${looksHTML()}`;
-}
-function refreshLooks(){ rerender(() => { renderLooks(); renderLooksInline(); }); placeLooks(); }
-function placeLooks(){
-  const el = $('#looks'); if (!el || el.hidden || !looksAnchor) return;
-  const r = looksAnchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
-  const card = looksAnchor.closest('.map-card'), below = card ? card.getBoundingClientRect().bottom + 8 : r.bottom + 8;
-  let left = Math.min(vw - w - 12, Math.max(12, r.right - w)), top = below;
-  if (top + h > vh - 8) top = r.top - h - 8;
-  el.style.left = left + 'px'; el.style.top = Math.max(12, top) + 'px';
-}
-function openLooks(anchor){ ensureState(); looksAnchor = anchor; const el = $('#looks'); el.hidden = false; renderLooks(); placeLooks(); const cur = el.querySelector('[aria-pressed="true"]'); if (cur) cur.focus({ preventScroll:true }); }
-function closeLooks(){ const el = $('#looks'); if (el && !el.hidden){ el.hidden = true; if (looksAnchor && document.contains(looksAnchor)) looksAnchor.focus({ preventScroll:true }); } looksAnchor = null; }
-document.addEventListener('pointerdown', e => { const el = $('#looks'); if (!el || el.hidden) return; if (el.contains(e.target) || e.target.closest('[data-act="looks"]')) return; closeLooks(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLooks(); });
-window.addEventListener('scroll', () => placeLooks(), { passive:true });
-window.addEventListener('resize', () => placeLooks());
 
 /* ---------------- navigation ---------------- */
 function go(v){
   if (v !== 'home') ensureState();
-  closeLooks(); syncCat();
+  syncCat();
   view = v; confirmNew = false;
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== 'v-' + v);
   if (v === 'home') renderHome();
@@ -1267,10 +1249,9 @@ document.addEventListener('click', e => {
     case 'savepdf': doSave('pdf'); break;
     case 'savepng': doSave('png'); break;
     case 'print': doPrint(); break;
-    case 'looks': { const el = $('#looks'); if (el.hidden) openLooks(b); else closeLooks(); break; }
     case 'breed': case 'coat':
       if (act === 'breed'){ S.breed = v; if (BREED[v].coat) S.coat = BREED[v].coat; } else S.coat = v;
-      syncCat(); setDirty(); refreshLooks(); if (view === 'zones') drawMap(); if (view === 'print') updatePreview(); break;
+      syncCat(); setDirty(); rerender(renderLookbar); if (view === 'print') updatePreview(); break;
   }
 });
 function scrollCtl(){ if (window.innerWidth <= 860){ const c = $('.zcard'); if (c){ const top = c.getBoundingClientRect().top; const mapH = ($('.map-col') || {}).offsetHeight || 0; if (top < mapH + 70) window.scrollBy({ top: top - mapH - 80, behavior:'smooth' }); } } }

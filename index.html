@@ -113,6 +113,8 @@ textarea.txt{resize:vertical;min-height:84px}
 .home h1 em{font-style:normal;color:var(--danger)}
 .home .lede{font-size:18px}
 .cta{display:flex;gap:10px;flex-wrap:wrap;margin:26px 0 8px}
+.notme{margin:2px 0 0;font-size:15px;color:var(--muted)}
+.notme .linkbtn{font-size:15px}
 .cta .btn{padding:13px 20px;font-size:16px}
 .confirm{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:12px 14px;border:1.5px solid var(--danger);border-radius:12px;font-size:15px}
 .how{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:10px;counter-reset:h}
@@ -357,7 +359,7 @@ const HAPPY = { purr:'Purring', slowblink:'Slow blinks', headbump:'Head bumps', 
 const STOP = { tail:'Tail swishing or thumping', ears:'Ears turning sideways or flat', ripple:'Skin rippling along the back', look:'Turning to stare at your hand', still:'Going suddenly still', pupils:'Big, dark pupils', growl:'Growling or hissing', grab:'Grabbing with paws', leave:'Walking away' };
 const WARN = { pickup:"Don't pick {them} up", wake:'Never wake {them} up to pet {them}', eating:"No petting while {theyre} eating", door:'Door dasher. Keep outside doors closed.', kids:"Don't let kids chase {them}", overstim:'Gets overstimulated fast. Keep sessions short.', lap:'Not a lap cat. Let {them} choose where to sit.' };
 
-function blank(){ return { v:1, name:'', pronoun:'she', about:'', photo:null, zones:{}, hello:'', helloCustom:'', pressure:'', session:'', happy:[], happyCustom:[], stop:[], stopCustom:[], warn:[], warnCustom:[], notes:'', contactName:'', contactPhone:'', paper:'letter', breed:'classic', coat:'solid', isExample:false }; }
+function blank(){ return { v:1, name:'', pronoun:'she', about:'', photo:null, zones:{}, hello:'', helloCustom:'', pressure:'', session:'', happy:[], happyCustom:[], stop:[], stopCustom:[], warn:[], warnCustom:[], notes:'', contactName:'', contactPhone:'', paper:'letter', format:'page', breed:'classic', coat:'solid', isExample:false }; }
 function example(){
   const z = (level, ...tips) => ({ level, tips: tips.map(k => ({k})) });
   return Object.assign(blank(), {
@@ -719,6 +721,92 @@ const PAPER = { letter:{ w:8.5, h:11, pt:[612, 792], label:'US Letter' }, a4:{ w
 const imgCache = new Map();
 function loadImg(src){ if (!src) return Promise.resolve(null); if (imgCache.has(src)) return imgCache.get(src);
   const p = new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); imgCache.set(src, p); return p; }
+/* ---------------- pocket cards ---------------- */
+const CARD = { w:4, h:2.75 };
+function renderCard(st, dpi, wIn, hIn, photo){
+  const I = v => v*dpi, pt = v => v/72*dpi, W = Math.round(I(wIn)), H = Math.round(I(hIn)), c = mk(W, H), ctx = c.getContext('2d');
+  const F = { disp:'"Krona One", "Arial Black", sans-serif', hand:'"Shantell Sans", "Comic Sans MS", sans-serif', body:'"Atkinson Hyperlegible", Arial, sans-serif' };
+  const C = { ink:'#1B2030', muted:'#5A6275', rule:'#CDD2DC', red:'#C42A38' };
+  const font = (w, size, fam) => { ctx.font = `${w} ${pt(size)}px ${fam}`; };
+  const meas = t => ctx.measureText(t).width;
+  const wrap = (str, maxW) => { const out = []; let cur = '';
+    for (let w of String(str).split(/\s+/).filter(Boolean)){ while (meas(w) > maxW && w.length > 1){ let cut = w.length - 1; while (cut > 1 && meas(w.slice(0, cut)) > maxW) cut--; if (cur){ out.push(cur); cur = ''; } out.push(w.slice(0, cut)); w = w.slice(cut); }
+      const t = cur ? cur + ' ' + w : w; if (!cur || meas(t) <= maxW) cur = t; else { out.push(cur); cur = w; } }
+    if (cur) out.push(cur); return out; };
+  const text = (t, x, y, color, align) => { ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.textBaseline = 'top'; ctx.fillText(t, x, y); };
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const pad = I(0.15), G = getCat(st.breed);
+  const zoneNames = lv => ZONE_ORDER.filter(id => st.zones[id] && st.zones[id].level === lv).map(id => G.byId[id].name);
+  // header
+  const photoD = photo ? I(0.46) : 0;
+  font(400, 5.4, F.disp); text('PETTING CARD', pad, pad, C.muted);
+  const name = catName(st) === 'your cat' ? 'Your cat' : catName(st);
+  let ns = 17; font(800, ns, F.hand); const nameMax = W - 2*pad - (photo ? photoD + I(0.08) : 0); while (meas(name) > nameMax && ns > 9){ ns -= 1; font(800, ns, F.hand); }
+  text(name, pad - pt(0.5), pad + pt(6.6), C.ink);
+  if (photo){ const cx = W - pad - photoD/2, cy = pad + photoD/2; ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, photoD/2, 0, Math.PI*2); ctx.clip();
+    const sc = Math.max(photoD/photo.width, photoD/photo.height); ctx.drawImage(photo, cx - photo.width*sc/2, cy - photo.height*sc/2, photo.width*sc, photo.height*sc); ctx.restore();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = pt(0.8); ctx.beginPath(); ctx.arc(cx, cy, photoD/2, 0, Math.PI*2); ctx.stroke(); }
+  const top = pad + pt(6.6) + pt(ns)*1.08 + I(0.04);
+  // footer
+  const who = [st.contactName && st.contactName.trim(), st.contactPhone && st.contactPhone.trim()].filter(Boolean).join(' · ');
+  const footH = who ? pt(6.4)*1.3 + I(0.05) : 0, bottom = H - pad - footH;
+  if (who){ ctx.strokeStyle = C.rule; ctx.lineWidth = pt(0.6); ctx.beginPath(); ctx.moveTo(pad, bottom + I(0.025)); ctx.lineTo(W - pad, bottom + I(0.025)); ctx.stroke();
+    font(700, 6.4, F.body); text('Questions? ', pad, bottom + I(0.06), C.ink); const qw = meas('Questions? '); font(400, 6.4, F.body); text(who, pad + qw, bottom + I(0.06), C.ink); }
+  // map + legend (left)
+  const leftW = I(2.02), legendH = pt(5.6)*1.35*2 + I(0.02);
+  let mapW = leftW, mapH = mapW*MAPB.h/MAPB.w; const availH = bottom - top - legendH - I(0.03);
+  if (mapH > availH){ mapH = availH; mapW = mapH*MAPB.w/MAPB.h; }
+  const levels = {}; ZONE_ORDER.forEach(id => { if (st.zones[id] && LV[st.zones[id].level]) levels[id] = st.zones[id].level; });
+  renderCatMap(ctx, pad + (leftW - mapW)/2, top, mapW, { levels, theme:SHEET_THEME, cat:G, coat:st.coat, heatRes:Math.min(1.1, mapW/MAPB.w) });
+  { const short = { fav:'Favorite', always:'Nice', lovemood:'Loves if in the mood', tolerate:'Tolerates if in the mood', danger:'Hands off' };
+    const rows = [['fav','always','danger'], ['lovemood','tolerate']], d = pt(6.4); let ly = top + mapH + I(0.04);
+    font(700, 5.6, F.body);
+    rows.forEach(r => { let x = pad; r.forEach(id => { drawBadge(ctx, id, x + d/2, ly + d/2 - pt(0.4), d); text(short[id], x + d + I(0.03), ly, C.ink); x += d + I(0.03) + meas(short[id]) + I(0.08); }); ly += pt(5.6)*1.35; }); }
+  // right column
+  const rx = pad + leftW + I(0.13), rw = W - pad - rx;
+  const best = zoneNames('fav').length ? zoneNames('fav') : zoneNames('always');
+  const stops = st.stop.map(id => STOP[id]).concat(st.stopCustom).filter(Boolean);
+  const warns = st.warn.map(id => fmt(WARN[id], st)).concat(st.warnCustom).filter(Boolean);
+  const secs = [
+    { lab:'BEST SPOTS', badge:zoneNames('fav').length ? 'fav' : 'always', items:best.length ? [best.join(', ')] : [] },
+    { lab:'HANDS OFF', badge:'danger', items:zoneNames('danger').length ? [zoneNames('danger').join(', ')] : [] },
+    { lab:'STOP IF YOU SEE', items:stops, bullets:true, max:3 },
+    { lab:'HEADS UP', items:warns, bullets:true, max:3, red:true },
+  ].filter(x => x.items.length);
+  const layout = (k, dry) => { let y = top; const labS = 5.2, itS = 7.6*k, lh = pt(itS)*1.22;
+    for (const sc of secs){
+      font(400, labS, F.disp); const lw = meas(sc.lab);
+      if (!dry){ if (sc.badge) drawBadge(ctx, sc.badge, rx + pt(3), y + pt(2.6), pt(6)); else { ctx.fillStyle = sc.red ? C.red : C.ink; } text(sc.lab, rx + (sc.badge ? pt(8.5) : 0), y + pt(0.4), sc.red ? C.red : C.ink); }
+      y += pt(labS) + I(0.035);
+      font(400, itS, F.hand); const list = sc.items.slice(0, sc.max || 99), more = sc.items.length - list.length;
+      list.forEach((it, i) => { const ind = sc.bullets ? pt(6) : 0, ls = wrap(it + (i === list.length - 1 && more > 0 ? ` (+${more} more)` : ''), rw - ind);
+        ls.forEach((l, j) => { if (!dry){ if (sc.bullets && j === 0){ ctx.fillStyle = sc.red ? C.red : C.ink; ctx.beginPath(); ctx.arc(rx + pt(2), y + lh*0.5, pt(1.3), 0, Math.PI*2); ctx.fill(); } text(l, rx + ind, y, C.ink); } y += lh; }); });
+      y += I(0.06);
+    }
+    return y; };
+  let k = 1; for (let i = 0; i < 12 && layout(k, true) > bottom; i++) k *= 0.94;
+  if (layout(k, true) > bottom) secs.forEach(x => { if (x.max) x.max = Math.max(1, x.max - 1); });
+  layout(k, false);
+  if (!secs.length){ font(400, 7, F.hand); text('Fill in the zones to see the details here.', rx, top, C.muted); }
+  return c;
+}
+async function renderCardsSheet(st, dpi, paperId){
+  await fontsReady; const photo = await loadImg(st.photo);
+  const pp = PAPER[paperId] || PAPER.letter, W = Math.round(pp.w*dpi), H = Math.round(pp.h*dpi), I = v => v*dpi, pt = v => v/72*dpi;
+  const cw = Math.min(CARD.w, (pp.w - 0.4)/2), ch = cw*CARD.h/CARD.w, cols = 2, rows = 3;
+  const card = renderCard(st, dpi, cw, ch, photo);
+  const cv = mk(W, H), ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const gw = cols*I(cw), gh = rows*I(ch), x0 = (W - gw)/2, y0 = Math.max(I(0.7), (H - gh)/2);
+  ctx.font = `400 ${pt(8.5)}px "Atkinson Hyperlegible", Arial, sans-serif`; ctx.fillStyle = '#5A6275'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('Cut along the dashed lines.', W/2, y0 - I(0.14));
+  for (let r = 0; r < rows; r++) for (let q = 0; q < cols; q++) ctx.drawImage(card, Math.round(x0 + q*I(cw)), Math.round(y0 + r*I(ch)));
+  ctx.strokeStyle = '#A9B0BE'; ctx.lineWidth = pt(0.6); ctx.setLineDash([pt(3), pt(2.5)]); ctx.beginPath();
+  for (let r = 0; r <= rows; r++){ ctx.moveTo(x0 - I(0.15), y0 + r*I(ch)); ctx.lineTo(x0 + gw + I(0.15), y0 + r*I(ch)); }
+  for (let q = 0; q <= cols; q++){ ctx.moveTo(x0 + q*I(cw), y0 - I(0.08)); ctx.lineTo(x0 + q*I(cw), y0 + gh + I(0.15)); }
+  ctx.stroke(); ctx.setLineDash([]);
+  return cv;
+}
+const renderOutput = (st, dpi, paperId) => st.format === 'cards' ? renderCardsSheet(st, dpi, paperId) : renderSheet(st, dpi, paperId);
 async function renderSheet(st, dpi, paperId){
   await fontsReady; const photo = await loadImg(st.photo);
   const pp = PAPER[paperId] || PAPER.letter, W = Math.round(pp.w*dpi), H = Math.round(pp.h*dpi);
@@ -985,9 +1073,10 @@ function renderHome(){
       <h1>Pet here.<br><em>Not there.</em></h1>
       <p class="lede">Map where your cat loves to be touched and where they'd rather you didn't. You'll get a one-page heat map with tips, mood signs and warnings, ready to print for guests and pet sitters.</p>
       <div class="cta">
-        ${has ? `<button class="btn primary" data-act="continue">Continue ${esc(possessive(nm))} guide</button><button class="btn ghost" data-act="new">Start a new guide</button>`
+        ${has ? `<button class="btn primary" data-act="continue">Continue ${esc(possessive(nm))} guide</button>`
               : `<button class="btn primary" data-act="new">Start my cat's guide</button><button class="btn ghost" data-act="loadexample">Edit the example</button>`}
       </div>
+      ${has && !confirmNew ? `<p class="notme">Different cat? <button class="linkbtn" data-act="new">${S.isExample ? 'Start your own guide' : 'Start a new guide'}</button></p>` : ''}
       ${confirmNew ? `<div class="confirm" role="alert"><span>This replaces ${esc(possessive(nm))} guide.</span><button class="btn sm primary" data-act="newconfirm">Start over</button><button class="btn sm ghost" data-act="newcancel">Keep it</button></div>` : ''}
     </div>
     <ol class="how"><li>Tell us about your cat</li><li>Rate 15 parts of the body, from nose to tail</li><li>Add mood signs, warnings and notes</li><li>Save it as a PDF and print it</li></ol>
@@ -1092,14 +1181,15 @@ let previewToken = 0;
 function renderPrint(){
   const s = S, n = catName(), nSet = ZONE_ORDER.filter(k => s.zones[k] && s.zones[k].level).length, nLeft = ZONE_ORDER.length - nSet;
   $('#v-print').innerHTML = `
-    <div class="step-head"><p class="eyebrow">Step 5 of 5</p><h1>${esc(n === 'your cat' ? 'Your' : possessive(n))} guide is ready to print</h1><p class="lede">Check it over, then save it. It fits on one page.</p></div>
+    <div class="step-head"><p class="eyebrow">Step 5 of 5</p><h1>${esc(n === 'your cat' ? 'Your' : possessive(n))} guide is ready to print</h1><p class="lede">${s.format === 'cards' ? 'Six wallet-size cards on one sheet. Print, then cut them out.' : 'Check it over, then save it. It fits on one page.'}</p></div>
     <div class="print-grid">
       <div class="preview"><div class="lookbar" id="lookbar"></div><div class="paper"><img id="sheetimg" alt="Printable petting guide preview" width="935" height="1210"></div></div>
       <div class="actions">
         ${nLeft ? `<p class="fallback">${nLeft} part${nLeft === 1 ? '' : 's'} of the body ${nLeft === 1 ? 'is' : 'are'} still unrated and show${nLeft === 1 ? 's' : ''} as grey stripes. <button class="linkbtn" data-act="go" data-v="zones">Rate ${nLeft === 1 ? 'it' : 'them'}</button></p>` : ''}
+        <div><span class="lab">Format</span>${seg('format', { page:'Full page', cards:'Pocket cards' }, s.format || 'page')}</div>
         <div><span class="lab">Paper size</span>${seg('paper', { letter:'US Letter', a4:'A4' }, s.paper)}</div>
         <div id="saveactions"></div>
-        <ul class="pts"><li>Open the PDF and print at 100% or "Actual size".</li><li>Stick it on the fridge or next to the food bowl for sitters and guests.</li><li>Your answers stay in this browser, so you can come back and edit.</li></ul>
+        <ul class="pts"><li>Open the PDF and print at 100% or "Actual size".</li><li>${s.format === 'cards' ? 'Cut along the dashed lines and hand one to each sitter or guest.' : 'Stick it on the fridge or next to the food bowl for sitters and guests.'}</li><li>Your answers stay in this browser, so you can come back and edit.</li></ul>
       </div>
     </div>`;
   renderPrintActions(); renderLookbar(); updatePreview();
@@ -1113,13 +1203,13 @@ function renderPrintActions(){
 }
 function updatePreview(){
   const tok = ++previewToken;
-  renderSheet(S, 110, S.paper).then(cv => { if (tok !== previewToken) return; const im = $('#sheetimg'); if (im){ im.width = cv.width; im.height = cv.height; im.src = cv.toDataURL('image/png'); } });
+  renderOutput(S, 110, S.paper).then(cv => { if (tok !== previewToken) return; const im = $('#sheetimg'); if (im){ im.width = cv.width; im.height = cv.height; im.src = cv.toDataURL('image/png'); } });
 }
 function setStatus(msg, cls){ const el = $('#savestatus'); if (el){ el.textContent = msg; el.className = 'status' + (cls ? ' ' + cls : ''); } }
 async function doPrint(){
   setStatus('Preparing the page…');
   try {
-    const cv = await renderSheet(S, 200, S.paper), im = $('#printimg');
+    const cv = await renderOutput(S, 200, S.paper), im = $('#printimg');
     $('#pagesize').textContent = `@page{size:${S.paper === 'a4' ? 'A4' : 'letter'};margin:0}`;
     await new Promise(r => { im.onload = r; im.onerror = r; im.src = cv.toDataURL('image/png'); });
     setStatus(''); window.print();
@@ -1135,9 +1225,9 @@ async function doSave(kind){
   const slug = (catName() === 'your cat' ? 'cat' : catName()).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'cat';
   setStatus('Preparing your file…');
   try {
-    const cv = await renderSheet(S, 300, S.paper); let data, filename;
-    if (kind === 'pdf'){ const pp = PAPER[S.paper] || PAPER.letter; data = await makePdf(cv, pp.pt[0], pp.pt[1]); filename = `${slug}-petting-guide.pdf`; }
-    else { data = await new Promise(r => cv.toBlob(r, 'image/png')); filename = `${slug}-petting-guide.png`; }
+    const cv = await renderOutput(S, 300, S.paper), what = S.format === 'cards' ? 'pocket-cards' : 'petting-guide'; let data, filename;
+    if (kind === 'pdf'){ const pp = PAPER[S.paper] || PAPER.letter; data = await makePdf(cv, pp.pt[0], pp.pt[1]); filename = `${slug}-${what}.pdf`; }
+    else { data = await new Promise(r => cv.toBlob(r, 'image/png')); filename = `${slug}-${what}.png`; }
     if (standalone){ directDownload(data, filename); setStatus(kind === 'pdf' ? 'Downloaded. Open the PDF to print it.' : 'Downloaded.', 'ok'); return; }
     setStatus('Confirm the save in the prompt.');
     await downloads.save({ filename, data });
@@ -1245,7 +1335,7 @@ document.addEventListener('click', e => {
     case 'loadexample': S = example(); zi = 0; save(); go('about'); break;
     case 'seg':
       if (g === 'pronoun') S.pronoun = v; else if (g === 'hello') S.hello = S.hello === v ? '' : v; else if (g === 'pressure') S.pressure = S.pressure === v ? '' : v;
-      else if (g === 'session') S.session = S.session === v ? '' : v; else if (g === 'paper'){ S.paper = v; }
+      else if (g === 'session') S.session = S.session === v ? '' : v; else if (g === 'paper'){ S.paper = v; } else if (g === 'format'){ S.format = v; }
       setDirty(); rerenderCurrent(); break;
     case 'chip': { const arr = S[g]; const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); setDirty(); rerenderCurrent(); break; }
     case 'rmcustom': S[g + 'Custom'].splice(+b.dataset.i, 1); setDirty(); rerenderCurrent(); break;
